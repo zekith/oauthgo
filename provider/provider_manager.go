@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/zekith/oauthgo/core/cookie"
-	"github.com/zekith/oauthgo/core/provider"
+	oauthgoauth2 "github.com/zekith/oauthgo/core/oauth2"
+	oauthgoprovider "github.com/zekith/oauthgo/core/provider"
 	"github.com/zekith/oauthgo/core/store"
 	"github.com/zekith/oauthgo/core/utils"
 )
@@ -33,7 +34,7 @@ func NewProviderManager() *ProviderManager {
 }
 
 // LoginHandler is a handler that redirects the user to the OAuth2/OIDC provider's login page.
-func (m *ProviderManager) LoginHandler(getOpts func(r *http.Request) oauthgoprovider.AuthOptions) http.HandlerFunc {
+func (m *ProviderManager) LoginHandler(getOpts func(r *http.Request) oauthgoauth2.AuthOptions) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get the provider from the URL path
 		p, ok := m.getProviderFromPath(w, r)

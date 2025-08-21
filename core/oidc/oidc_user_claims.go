@@ -2,7 +2,6 @@ package oauthgooidc
 
 import (
 	"github.com/golang-jwt/jwt/v5"
-	coreprovider "github.com/zekith/oauthgo/core/provider"
 	"github.com/zekith/oauthgo/core/types"
 )
 
@@ -57,9 +56,9 @@ func (c *OIDCUserClaims) GetAudience() (jwt.ClaimStrings, error) {
 	return c.Audience, nil
 }
 
-// ToUser converts OIDCUserClaims to a coreprovider.User.
-func (c *OIDCUserClaims) ToUser() *coreprovider.User {
-	return &coreprovider.User{
+// ToUser converts OIDCUserClaims to a User.
+func (c *OIDCUserClaims) ToUser() *User {
+	return &User{
 		Subject:       c.Subject,
 		Email:         c.Email,
 		EmailVerified: bool(c.EmailVerified), // convert back to plain bool

@@ -9,7 +9,7 @@ import (
 
 	"github.com/zekith/oauthgo/core/cookie"
 	env2 "github.com/zekith/oauthgo/core/env"
-	coreprovider "github.com/zekith/oauthgo/core/provider"
+	coreprovider "github.com/zekith/oauthgo/core/oauth2"
 	"github.com/zekith/oauthgo/core/store"
 	"github.com/zekith/oauthgo/provider"
 	"golang.org/x/text/cases"

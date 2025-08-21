@@ -1,27 +1,32 @@
 package oauthgolinkedin
 
 import (
-	"net/http"
-
 	"github.com/AlekSi/pointer"
-	coreoidc "github.com/zekith/oauthgo/core/oidc"
-	"github.com/zekith/oauthgo/core/replay"
-	"github.com/zekith/oauthgo/core/state"
+	oauthgohelper "github.com/zekith/oauthgo/core/helper"
+	coreprov "github.com/zekith/oauthgo/core/provider" // your facade
 )
 
-// New returns an OIDC-based LinkedIn provider using discovery-less configuration.
-func New(stateCodec *oauthgostate.StateCodec, rp oauthgoreplay.ReplayProtector, httpClient *http.Client, clientID, clientSecret string) (*coreoidc.OIDCProvider, error) {
-	cfg := coreoidc.OIDCConfig{
-		Issuer:           "https://www.linkedin.com/oauth",
-		ClientID:         clientID,
-		ClientSecret:     clientSecret,
-		DisableDiscovery: true,
-		AuthURL:          "https://www.linkedin.com/oauth/v2/authorization",
-		TokenURL:         "https://www.linkedin.com/oauth/v2/accessToken",
-		UserInfoURL:      "https://api.linkedin.com/v2/userinfo",
-		JWKSURL:          "https://www.linkedin.com/oauth/openid/jwks",
-		RevocationURL:    "https://www.linkedin.com/oauth/v2/revoke",
-		SupportsPKCE:     pointer.ToBool(false),
-	}
-	return coreoidc.NewOIDCProvider("linkedin", cfg, stateCodec, rp, httpClient)
+// Provider defaults for LinkedIn
+var linkedInDefaults = &coreprov.ProviderOptions{
+	Name: pointer.ToString("linkedin"),
+	Mode: pointer.To(coreprov.OIDC),
+
+	OAuth2: &coreprov.OAuth2Options{
+		AuthURL:       pointer.ToString("https://www.linkedin.com/oauth/v2/authorization"),
+		TokenURL:      pointer.ToString("https://www.linkedin.com/oauth/v2/accessToken"),
+		RevocationURL: pointer.ToString("https://www.linkedin.com/oauth/v2/revoke"),
+		Scopes:        pointer.To([]string{"email"}), // choose minimal OAuth2 default
+		UsePKCE:       pointer.ToBool(false),         // PKCE is not supported for LinkedIn yet in this library as special handling is required
+	},
+	OIDC: &coreprov.OIDCOptions{
+		Issuer:           pointer.ToString("https://www.linkedin.com/oauth"),
+		JWKSURL:          pointer.ToString("https://www.linkedin.com/oauth/openid/jwks"),
+		UserInfoURL:      pointer.ToString("https://api.linkedin.com/v2/userinfo"),
+		Scopes:           pointer.To([]string{"openid", "profile", "email"}),
+		DisableDiscovery: pointer.ToBool(true), // LinkedIn OIDC path is discovery-less
+	},
+}
+
+func NewWithOptions(input *coreprov.ProviderInput) (coreprov.Provider, error) {
+	return oauthgohelper.BuildProviderFromDefaults(input, linkedInDefaults)
 }

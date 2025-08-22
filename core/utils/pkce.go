@@ -17,15 +17,19 @@ type PKCE struct {
 
 // NewPKCE creates a new PKCE.
 func NewPKCE() (*PKCE, error) {
-	// Create a random string
+
+	// Create a random verifier
 	verifier, err := RandomStringURLSafe(32)
 	if err != nil {
 		return nil, err
 	}
+
 	// Hash the verifier
 	s := sha256.Sum256([]byte(verifier))
-	// Encode the hash as a base64 string and use it as the challenge
+
+	// Encode the hash verifier as a base64 string and use it as the challenge
 	challenge := base64.RawURLEncoding.EncodeToString(s[:])
-	// Return the PKCE
+
+	// Return the PKCE with the verifier and challenge
 	return &PKCE{Verifier: verifier, Challenge: challenge, Method: "S256"}, nil
 }

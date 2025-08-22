@@ -7,6 +7,7 @@ import (
 	oauthgostate "github.com/zekith/oauthgo/core/state"
 )
 
+// Mode represents the authentication mode.
 type Mode int
 
 const (
@@ -14,6 +15,7 @@ const (
 	OIDC
 )
 
+// OAuth2Options are the options for OAuth2.
 type OAuth2Options struct {
 	AuthURL          *string   // required
 	TokenURL         *string   // required
@@ -23,6 +25,8 @@ type OAuth2Options struct {
 	PKCEPublicClient *bool     // optional, defaults to false (if true, client secret is not sent in token exchange)
 	UsePKCE          *bool     // optional, defaults to true. Set false to disable PKCE (not recommended)
 }
+
+// OIDCOptions are the options for OIDC.
 type OIDCOptions struct {
 	Issuer                     *string   // required
 	JWKSURL                    *string   // optional
@@ -32,6 +36,7 @@ type OIDCOptions struct {
 	DisableIdTokenVerification *bool     // optional, defaults to false. Set to true to skip id_token verification (not recommended)
 }
 
+// ProviderOptions are the options for the provider.
 type ProviderOptions struct {
 	Name   *string        // optional
 	Mode   *Mode          // optional
@@ -39,6 +44,7 @@ type ProviderOptions struct {
 	OIDC   *OIDCOptions   // optional
 }
 
+// ProviderInput is the input for the provider.
 type ProviderInput struct {
 	StateCodec      *oauthgostate.StateCodec
 	ReplayProtector oauthgoreplay.ReplayProtector

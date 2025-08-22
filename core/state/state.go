@@ -12,6 +12,10 @@ import (
 	"github.com/zekith/oauthgo/core/utils"
 )
 
+const (
+	minStateLength = sha256.Size
+)
+
 // StatePayload is the payload of a state token.
 type StatePayload struct {
 	// Provider is the name of the OAuth provider.
@@ -38,56 +42,95 @@ type StateCodec struct {
 }
 
 // Encode encodes a state payload with HMAC signing and base64 encoding.
-// The state payload must contain a provider, nonce, CSRF, and redirect URL.
-// The PKCE field is optional and can be used for PKCE flows.
 func (c *StateCodec) Encode(sp StatePayload) (string, error) {
+	// marshal the payload
 	raw, err := json.Marshal(sp)
 	if err != nil {
 		return "", err
 	}
-	// sign the state
-	m := hmac.New(sha256.New, c.HMACSecret)
-	m.Write(raw)
-	sig := m.Sum(nil)
-	token := append(raw, sig...)
-	// encode the state
+
+	// sign the payload
+	token := c.signPayload(raw)
+
+	// encode the token
 	return base64.RawURLEncoding.EncodeToString(token), nil
 }
 
+// signPayload signs the raw payload with HMAC and appends the signature.
+func (c *StateCodec) signPayload(raw []byte) []byte {
+	m := hmac.New(sha256.New, c.HMACSecret)
+	m.Write(raw)
+	sig := m.Sum(nil)
+	return append(raw, sig...)
+}
+
 // Decode decodes a state payload from a base64 encoded string.
-// It verifies the HMAC signature and checks if the state is expired based on the TTL.
-// If the state is valid, it returns the decoded StatePayload.
-// If the state is invalid or expired, it returns an error.
 func (c *StateCodec) Decode(s string) (StatePayload, error) {
-	// decode the state
-	b, err := base64.RawURLEncoding.DecodeString(s)
+	// decode the token
+	b, err := c.decodeBase64(s)
 	if err != nil {
-		fmt.Print("base64 decode error ", err)
 		return StatePayload{}, err
 	}
-	// verify the state
-	if len(b) < sha256.Size {
-		fmt.Print("bad state length ", len(b))
-		return StatePayload{}, errors.New("bad state")
+
+	// verify the signature
+	raw, err := c.verifySignature(b)
+	if err != nil {
+		return StatePayload{}, err
 	}
+
+	// unmarshal the payload
+	sp, err := c.unmarshalPayload(raw)
+	if err != nil {
+		return StatePayload{}, err
+	}
+
+	// check if the state is expired
+	if err := c.checkExpiration(sp); err != nil {
+		return StatePayload{}, err
+	}
+
+	return sp, nil
+}
+
+// decodeBase64 decodes a base64 encoded string.
+func (c *StateCodec) decodeBase64(s string) ([]byte, error) {
+	b, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("base64 decode error: %w", err)
+	}
+	return b, nil
+}
+
+// verifySignature verifies the HMAC signature of the state.
+func (c *StateCodec) verifySignature(b []byte) ([]byte, error) {
+	if len(b) < minStateLength {
+		return nil, fmt.Errorf("invalid state length %d, minimum required %d", len(b), minStateLength)
+	}
+
 	raw, sig := b[:len(b)-sha256.Size], b[len(b)-sha256.Size:]
 	m := hmac.New(sha256.New, c.HMACSecret)
 	m.Write(raw)
+
 	if !hmac.Equal(sig, m.Sum(nil)) {
-		fmt.Print("bad state signature")
-		return StatePayload{}, errors.New("bad state signature")
+		return nil, errors.New("invalid state signature")
 	}
-	// unmarshal the state
+
+	return raw, nil
+}
+
+// unmarshalPayload unmarshal the state payload.
+func (c *StateCodec) unmarshalPayload(raw []byte) (StatePayload, error) {
 	var sp StatePayload
 	if err := json.Unmarshal(raw, &sp); err != nil {
-		fmt.Print("json unmarshal error ", err)
-		return StatePayload{}, err
+		return StatePayload{}, fmt.Errorf("json unmarshal error: %w", err)
 	}
-	// check if the state is expired
-	if c.TTL > 0 && time.Since(time.Unix(sp.IssuedAt, 0)) > c.TTL {
-		fmt.Print("state expired")
-		return StatePayload{}, errors.New("state expired")
-	}
-	// return the state
 	return sp, nil
+}
+
+// checkExpiration checks if the state is expired.
+func (c *StateCodec) checkExpiration(sp StatePayload) error {
+	if c.TTL > 0 && time.Since(time.Unix(sp.IssuedAt, 0)) > c.TTL {
+		return errors.New("state expired")
+	}
+	return nil
 }

@@ -35,16 +35,21 @@ func (m *MemorySessionStore) Put(ctx context.Context, id string, data SessionDat
 func (m *MemorySessionStore) Get(ctx context.Context, id string) (SessionData, bool, error) {
 	// Lock to prevent concurrent reads.
 	m.mu.RLock()
+
 	// Unlock before returning.
 	defer m.mu.RUnlock()
+
 	// Check if the session exists and hasn't expired.'
 	exp, ok := m.exp[id]
+
 	// If the session doesn't exist or has expired, return an empty session.'
 	if !ok || time.Now().After(exp) {
 		return SessionData{}, false, nil
 	}
+
 	// Return the session.
 	v, ok := m.vals[id]
+
 	return v, ok, nil
 }
 
@@ -52,11 +57,15 @@ func (m *MemorySessionStore) Get(ctx context.Context, id string) (SessionData, b
 func (m *MemorySessionStore) Del(ctx context.Context, id string) error {
 	// Lock to prevent concurrent writes.
 	m.mu.Lock()
+
 	// Unlock before returning.
 	defer m.mu.Unlock()
+
 	// Delete the session.
 	delete(m.vals, id)
+
 	// Delete the expiry time.
 	delete(m.exp, id)
+
 	return nil
 }

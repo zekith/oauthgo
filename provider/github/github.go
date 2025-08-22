@@ -2,8 +2,8 @@ package oauthgogithub
 
 import (
 	"github.com/AlekSi/pointer"
-	coreprov "github.com/zekith/oauthgo/core/provider"
 	"github.com/zekith/oauthgo/core/provider/factory"
+	coreprov "github.com/zekith/oauthgo/core/provider/oauth2oidc"
 	"github.com/zekith/oauthgo/core/types"
 )
 

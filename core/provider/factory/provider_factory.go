@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/AlekSi/pointer"
-	coreprov "github.com/zekith/oauthgo/core/provider"
 	oauthgoauth2 "github.com/zekith/oauthgo/core/provider/oauth2"
+	coreprov "github.com/zekith/oauthgo/core/provider/oauth2oidc"
 	oidccore "github.com/zekith/oauthgo/core/provider/oidc"
 	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
 	oauthgostate "github.com/zekith/oauthgo/core/state"

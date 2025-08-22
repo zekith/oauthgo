@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/zekith/oauthgo/core/cookie"
-	oauthgoprovider "github.com/zekith/oauthgo/core/provider"
 	"github.com/zekith/oauthgo/core/provider/oauth2"
+	oauthgoprovider "github.com/zekith/oauthgo/core/provider/oauth2oidc"
 	"github.com/zekith/oauthgo/core/store"
 	"github.com/zekith/oauthgo/core/utils"
 )

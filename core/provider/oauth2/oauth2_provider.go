@@ -34,7 +34,7 @@ type OAuth2Provider interface {
 	AuthURL(ctx context.Context, r *http.Request, opts AuthURLOptions) (url string, opaqueState string, err error)
 	// Exchange exchanges an authorization code for an access token.
 	Exchange(ctx context.Context, r *http.Request, code string, opaqueState string) (*OAuth2Session, error)
-	// Refresh refreshes an access token.
+	// Refresh refreshes an access token based on a refresh token.
 	Refresh(ctx context.Context, refreshToken string) (*OAuth2Session, error)
 	// Revoke revokes a token.
 	Revoke(ctx context.Context, token string) error

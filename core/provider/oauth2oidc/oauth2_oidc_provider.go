@@ -1,4 +1,4 @@
-package oauthgoprovider
+package oauth2oidc
 
 import (
 	"context"

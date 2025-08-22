@@ -3,7 +3,7 @@ package oauthgolinkedin
 import (
 	"github.com/AlekSi/pointer"
 	coreprov "github.com/zekith/oauthgo/core/provider" // your facade
-	"github.com/zekith/oauthgo/core/provider/helper"
+	"github.com/zekith/oauthgo/core/provider/factory"
 	"github.com/zekith/oauthgo/core/types"
 )
 
@@ -29,5 +29,5 @@ var linkedInDefaults = &oauthgotypes.OAuth2OIDCOptions{
 }
 
 func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
-	return oauthgohelper.NewOAuthOIDCProvider(input, linkedInDefaults)
+	return oauthgofactory.NewOAuthOIDCProvider(input, linkedInDefaults)
 }

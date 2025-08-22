@@ -52,8 +52,8 @@ const (
 // SetupHTTPHandlers sets up the HTTP handlers for the OAuth manager.
 func SetupHTTPHandlers(m *oauthgoprovidermanager.ProviderManager, cookieMgr *oauthgocookie.CookieSessionManager, sessionStore oauthgostore.SessionStore) {
 	http.HandleFunc(PathRoot, createRootHandler(m))
-	http.HandleFunc(PathAuth, m.LoginHandler(func(r *http.Request) coreprovider.AuthOptions {
-		return coreprovider.AuthOptions{
+	http.HandleFunc(PathAuth, m.LoginHandler(func(r *http.Request) coreprovider.AuthURLOptions {
+		return coreprovider.AuthURLOptions{
 			RedirectURL: defaultRedirect(r),
 			Prompt:      PromptSelectAccount,
 		}

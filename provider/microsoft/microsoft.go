@@ -3,7 +3,7 @@ package oauthgomicrosoft
 import (
 	"github.com/AlekSi/pointer"
 	coreprov "github.com/zekith/oauthgo/core/provider"
-	"github.com/zekith/oauthgo/core/provider/helper"
+	"github.com/zekith/oauthgo/core/provider/factory"
 	"github.com/zekith/oauthgo/core/types"
 )
 
@@ -28,5 +28,5 @@ var microsoftDefaults = &oauthgotypes.OAuth2OIDCOptions{
 }
 
 func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
-	return oauthgohelper.NewOAuthOIDCProvider(input, microsoftDefaults)
+	return oauthgofactory.NewOAuthOIDCProvider(input, microsoftDefaults)
 }

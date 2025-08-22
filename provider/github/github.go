@@ -3,7 +3,7 @@ package oauthgogithub
 import (
 	"github.com/AlekSi/pointer"
 	coreprov "github.com/zekith/oauthgo/core/provider"
-	"github.com/zekith/oauthgo/core/provider/helper"
+	"github.com/zekith/oauthgo/core/provider/factory"
 	"github.com/zekith/oauthgo/core/types"
 )
 
@@ -22,5 +22,5 @@ var githubDefaults = &oauthgotypes.OAuth2OIDCOptions{
 }
 
 func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
-	return oauthgohelper.NewOAuthOIDCProvider(input, githubDefaults)
+	return oauthgofactory.NewOAuthOIDCProvider(input, githubDefaults)
 }

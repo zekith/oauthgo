@@ -1,4 +1,4 @@
-package oauthgohelper
+package oauthgofactory
 
 import (
 	"fmt"
@@ -81,7 +81,7 @@ func buildOAuth2Provider(
 
 	config.scopes = pointer.Get(resolveScopes(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *[]string { return o.Scopes }, defaultOpts.OAuth2.Scopes))
 	provider := newOAuth2Provider(config)
-	return coreprov.NewAuthFacade(provider, nil), nil
+	return coreprov.NewOAuth2OIDCFacade(provider, nil), nil
 }
 
 func buildOIDCProvider(
@@ -100,11 +100,11 @@ func buildOIDCProvider(
 		return nil, err
 	}
 
-	return coreprov.NewAuthFacade(provider, oidcDecorator), nil
+	return coreprov.NewOAuth2OIDCFacade(provider, oidcDecorator), nil
 }
 
 func newOAuth2Provider(config *OAuthProviderConfig) oauthgoauth2.OAuth2Provider {
-	return oauthgoauth2.NewBaseOAuth2Provider(config.name, oauthgoauth2.OAuth2Config{
+	return oauthgoauth2.NewStandardOAuth2Provider(config.name, oauthgoauth2.OAuth2Config{
 		ClientID:      config.clientID,
 		ClientSecret:  config.clientSecret,
 		Scopes:        config.scopes,

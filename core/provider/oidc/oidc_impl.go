@@ -26,21 +26,21 @@ type OIDCConfig struct {
 
 // OIDCDecorator wraps an OAuth2 provider and adds OIDC-specific functionality.
 type OIDCDecorator struct {
-	base       oauthgoauth2.OAuth2Provider // wrapped OAuth2 provider
-	httpClient *http.Client
-	verifier   *gooidc.IDTokenVerifier // non-nil in OIDC mode
-	idp        *gooidc.Provider        // present when discovery is used
-	cfg        OIDCConfig
+	oAuth2Provider oauthgoauth2.OAuth2Provider // wrapped OAuth2 provider
+	httpClient     *http.Client
+	verifier       *gooidc.IDTokenVerifier // non-nil in OIDC mode
+	idp            *gooidc.Provider        // present when discovery is used
+	cfg            OIDCConfig
 }
 
 // NewOIDCDecorator creates a new OIDCDecorator.
-func NewOIDCDecorator(base oauthgoauth2.OAuth2Provider, httpClient *http.Client, cfg OIDCConfig) (*OIDCDecorator, error) {
+func NewOIDCDecorator(oAuth2Provider oauthgoauth2.OAuth2Provider, httpClient *http.Client, cfg OIDCConfig) (*OIDCDecorator, error) {
 	httpClient = initializeHTTPClient(httpClient)
 
 	d := &OIDCDecorator{
-		base:       base,
-		httpClient: httpClient,
-		cfg:        cfg,
+		oAuth2Provider: oAuth2Provider,
+		httpClient:     httpClient,
+		cfg:            cfg,
 	}
 
 	verifier, idp, err := createVerifier(httpClient, cfg)
@@ -172,7 +172,7 @@ func (d *OIDCDecorator) userInfoFromHTTP(ctx context.Context, accessToken string
 	}()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, fmt.Errorf("%s: userinfo http %d", d.base.Name(), res.StatusCode)
+		return nil, fmt.Errorf("%s: userinfo http %d", d.oAuth2Provider.Name(), res.StatusCode)
 	}
 
 	var claims OIDCUserClaims

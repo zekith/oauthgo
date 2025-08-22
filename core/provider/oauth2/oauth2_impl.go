@@ -29,35 +29,35 @@ type OAuth2Config struct {
 	UsePKCE       bool              // controls whether to use PKCE (Proof Key for Code Exchange) in the OAuth2 flow
 }
 
-// BaseOAuth2Provider is an OAuth2 provider that implements the OAuth2Provider interface.
-type BaseOAuth2Provider struct {
-	name       string
-	cfg        OAuth2Config
-	httpClient *http.Client
-	stateCodec *oauthgostate.StateCodec
-	replay     oauthgoreplay.ReplayProtector
-	baseOAuth  *oauth2.Config // template; clone per request
+// StandardOAuth2Provider is an OAuth2 provider that implements the OAuth2Provider interface.
+type StandardOAuth2Provider struct {
+	name           string
+	cfg            OAuth2Config
+	httpClient     *http.Client
+	stateCodec     *oauthgostate.StateCodec
+	replay         oauthgoreplay.ReplayProtector
+	templateConfig *oauth2.Config // template; clone per request
 }
 
-// NewBaseOAuth2Provider creates a new BaseOAuth2Provider.
-func NewBaseOAuth2Provider(
+// NewStandardOAuth2Provider creates a new StandardOAuth2Provider.
+func NewStandardOAuth2Provider(
 	name string,
 	cfg OAuth2Config,
 	st *oauthgostate.StateCodec,
 	rp oauthgoreplay.ReplayProtector,
-	hc *http.Client) *BaseOAuth2Provider {
+	hc *http.Client) *StandardOAuth2Provider {
 
 	httpClient := getHTTPClientWithDefault(hc)
 	scopes := getScopesWithDefaults(cfg.Scopes)
 	oauth2Config := createOAuth2Config(cfg, scopes)
 
-	return &BaseOAuth2Provider{
-		name:       name,
-		cfg:        cfg,
-		httpClient: httpClient,
-		stateCodec: st,
-		replay:     rp,
-		baseOAuth:  oauth2Config,
+	return &StandardOAuth2Provider{
+		name:           name,
+		cfg:            cfg,
+		httpClient:     httpClient,
+		stateCodec:     st,
+		replay:         rp,
+		templateConfig: oauth2Config,
 	}
 }
 
@@ -91,19 +91,19 @@ func createOAuth2Config(cfg OAuth2Config, scopes []string) *oauth2.Config {
 }
 
 // Name implements the OAuth2Provider interface method and returns the provider name.
-func (p *BaseOAuth2Provider) Name() string {
+func (p *StandardOAuth2Provider) Name() string {
 	return p.name
 }
 
-// cloneOAuth returns a clone of the base OAuth2 config.
-func (p *BaseOAuth2Provider) cloneOAuth() *oauth2.Config {
-	c := *p.baseOAuth
+// cloneTemplateConfig returns a clone of the template config.
+func (p *StandardOAuth2Provider) cloneTemplateConfig() *oauth2.Config {
+	c := *p.templateConfig
 	return &c
 }
 
 // AuthURL implements the OAuth2Provider interface method and returns the URL to redirect the user to for authentication.
-func (p *BaseOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, opts AuthOptions) (string, string, error) {
-	o := p.cloneOAuth()
+func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, opts AuthURLOptions) (string, string, error) {
+	o := p.cloneTemplateConfig()
 	o.RedirectURL = opts.RedirectURL
 	if len(opts.Scopes) > 0 {
 		o.Scopes = append([]string{}, opts.Scopes...)
@@ -129,7 +129,7 @@ func (p *BaseOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, opts 
 }
 
 // createStatePayload creates the state payload.
-func (p *BaseOAuth2Provider) createStatePayload(opts AuthOptions) (oauthgostate.StatePayload, error) {
+func (p *StandardOAuth2Provider) createStatePayload(opts AuthURLOptions) (oauthgostate.StatePayload, error) {
 	nonce, err := oauthgoutils.RandomStringURLSafe(16)
 	if err != nil {
 		return oauthgostate.StatePayload{}, err
@@ -160,7 +160,7 @@ func (p *BaseOAuth2Provider) createStatePayload(opts AuthOptions) (oauthgostate.
 }
 
 // buildAuthParams builds the auth params.
-func (p *BaseOAuth2Provider) buildAuthParams(opts AuthOptions, pkce *oauthgoutils.PKCE) ([]oauth2.AuthCodeOption, error) {
+func (p *StandardOAuth2Provider) buildAuthParams(opts AuthURLOptions, pkce *oauthgoutils.PKCE) ([]oauth2.AuthCodeOption, error) {
 	var params []oauth2.AuthCodeOption
 
 	if opts.Prompt != "" {
@@ -185,7 +185,7 @@ func (p *BaseOAuth2Provider) buildAuthParams(opts AuthOptions, pkce *oauthgoutil
 }
 
 // Exchange implements the OAuth2Provider interface method and exchanges the code for a token.
-func (p *BaseOAuth2Provider) Exchange(ctx context.Context, r *http.Request, code, opaque string) (*Session, error) {
+func (p *StandardOAuth2Provider) Exchange(ctx context.Context, r *http.Request, code, opaque string) (*OAuth2Session, error) {
 	sp, err := p.validateAndDecodeState(opaque)
 	if err != nil {
 		return nil, err
@@ -209,7 +209,7 @@ func (p *BaseOAuth2Provider) Exchange(ctx context.Context, r *http.Request, code
 }
 
 // validateAndDecodeState validates and decodes the state.
-func (p *BaseOAuth2Provider) validateAndDecodeState(opaque string) (*oauthgostate.StatePayload, error) {
+func (p *StandardOAuth2Provider) validateAndDecodeState(opaque string) (*oauthgostate.StatePayload, error) {
 	sp, err := p.stateCodec.Decode(opaque)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode state: %w", err)
@@ -218,7 +218,7 @@ func (p *BaseOAuth2Provider) validateAndDecodeState(opaque string) (*oauthgostat
 }
 
 // checkReplayProtection checks the replay protection.
-func (p *BaseOAuth2Provider) checkReplayProtection(ctx context.Context, opaque string) error {
+func (p *StandardOAuth2Provider) checkReplayProtection(ctx context.Context, opaque string) error {
 	if p.replay == nil {
 		return nil
 	}
@@ -234,7 +234,7 @@ func (p *BaseOAuth2Provider) checkReplayProtection(ctx context.Context, opaque s
 }
 
 // buildTokenExchangeOptions builds the token exchange options.
-func (p *BaseOAuth2Provider) buildTokenExchangeOptions(sp *oauthgostate.StatePayload) ([]oauth2.AuthCodeOption, error) {
+func (p *StandardOAuth2Provider) buildTokenExchangeOptions(sp *oauthgostate.StatePayload) ([]oauth2.AuthCodeOption, error) {
 	var opts []oauth2.AuthCodeOption
 
 	if sp.PKCE != nil {
@@ -249,8 +249,8 @@ func (p *BaseOAuth2Provider) buildTokenExchangeOptions(sp *oauthgostate.StatePay
 }
 
 // exchangeCodeForToken exchanges the code for a token.
-func (p *BaseOAuth2Provider) exchangeCodeForToken(ctx context.Context, code, redirectURL string, opts []oauth2.AuthCodeOption) (*oauth2.Token, error) {
-	oauthConfig := p.cloneOAuth()
+func (p *StandardOAuth2Provider) exchangeCodeForToken(ctx context.Context, code, redirectURL string, opts []oauth2.AuthCodeOption) (*oauth2.Token, error) {
+	oauthConfig := p.cloneTemplateConfig()
 	oauthConfig.RedirectURL = redirectURL
 
 	tok, err := oauthConfig.Exchange(ctx, code, opts...)
@@ -261,13 +261,13 @@ func (p *BaseOAuth2Provider) exchangeCodeForToken(ctx context.Context, code, red
 }
 
 // createSessionFromToken creates the session from the token.
-func (p *BaseOAuth2Provider) createSessionFromToken(tok *oauth2.Token) *Session {
+func (p *StandardOAuth2Provider) createSessionFromToken(tok *oauth2.Token) *OAuth2Session {
 	idToken := ""
 	if idTokenValue := tok.Extra("id_token"); idTokenValue != nil {
 		idToken = fmt.Sprint(idTokenValue)
 	}
 
-	return &Session{
+	return &OAuth2Session{
 		Provider:     p.name,
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,
@@ -279,7 +279,7 @@ func (p *BaseOAuth2Provider) createSessionFromToken(tok *oauth2.Token) *Session 
 }
 
 // Refresh implements the OAuth2Provider interface method and refreshes the token.
-func (p *BaseOAuth2Provider) Refresh(ctx context.Context, refreshToken string) (*Session, error) {
+func (p *StandardOAuth2Provider) Refresh(ctx context.Context, refreshToken string) (*OAuth2Session, error) {
 	tok, err := p.refreshTokenFromSource(ctx, refreshToken)
 	if err != nil {
 		return nil, err
@@ -288,8 +288,8 @@ func (p *BaseOAuth2Provider) Refresh(ctx context.Context, refreshToken string) (
 }
 
 // refreshTokenFromSource refreshes the token from the source.
-func (p *BaseOAuth2Provider) refreshTokenFromSource(ctx context.Context, refreshToken string) (*oauth2.Token, error) {
-	o := p.cloneOAuth()
+func (p *StandardOAuth2Provider) refreshTokenFromSource(ctx context.Context, refreshToken string) (*oauth2.Token, error) {
+	o := p.cloneTemplateConfig()
 	ts := o.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})
 	tok, err := ts.Token()
 	if err != nil {
@@ -302,7 +302,7 @@ func (p *BaseOAuth2Provider) refreshTokenFromSource(ctx context.Context, refresh
 }
 
 // Revoke implements the OAuth2Provider interface method and revokes the token.
-func (p *BaseOAuth2Provider) Revoke(ctx context.Context, token string) error {
+func (p *StandardOAuth2Provider) Revoke(ctx context.Context, token string) error {
 	if p.cfg.RevocationURL == "" {
 		return nil
 	}
@@ -322,7 +322,7 @@ func (p *BaseOAuth2Provider) Revoke(ctx context.Context, token string) error {
 }
 
 // buildRevocationForm builds the revocation form.
-func (p *BaseOAuth2Provider) buildRevocationForm(token string) url.Values {
+func (p *StandardOAuth2Provider) buildRevocationForm(token string) url.Values {
 	form := url.Values{}
 	form.Set("token", token)
 	form.Set("client_id", p.cfg.ClientID)
@@ -333,7 +333,7 @@ func (p *BaseOAuth2Provider) buildRevocationForm(token string) url.Values {
 }
 
 // createRevocationRequest creates the revocation request.
-func (p *BaseOAuth2Provider) createRevocationRequest(ctx context.Context, form url.Values) (*http.Request, error) {
+func (p *StandardOAuth2Provider) createRevocationRequest(ctx context.Context, form url.Values) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.cfg.RevocationURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
@@ -343,7 +343,7 @@ func (p *BaseOAuth2Provider) createRevocationRequest(ctx context.Context, form u
 }
 
 // handleRevocationResponse handles the revocation response.
-func (p *BaseOAuth2Provider) handleRevocationResponse(res *http.Response) error {
+func (p *StandardOAuth2Provider) handleRevocationResponse(res *http.Response) error {
 	defer func() {
 		_, _ = io.Copy(io.Discard, res.Body)
 		_ = res.Body.Close()

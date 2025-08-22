@@ -13,11 +13,11 @@ type OAuthO2IDCProvider interface {
 	// Name returns the name of the provider.
 	Name() string
 	// AuthURL returns the URL to redirect the user to for authentication.
-	AuthURL(ctx context.Context, r *http.Request, opts oauthgoauth2.AuthOptions) (string, string, error)
+	AuthURL(ctx context.Context, r *http.Request, opts oauthgoauth2.AuthURLOptions) (string, string, error)
 	// Exchange exchanges an authorization code for an access token.
-	Exchange(ctx context.Context, r *http.Request, code, opaqueState string) (*oauthgoauth2.Session, error)
+	Exchange(ctx context.Context, r *http.Request, code, opaqueState string) (*oauthgoauth2.OAuth2Session, error)
 	// Refresh refreshes an access token.
-	Refresh(ctx context.Context, refreshToken string) (*oauthgoauth2.Session, error)
+	Refresh(ctx context.Context, refreshToken string) (*oauthgoauth2.OAuth2Session, error)
 	// Revoke revokes a token.
 	Revoke(ctx context.Context, token string) error
 	// UserInfo retrieves user information.
@@ -32,8 +32,8 @@ type OAuth2OIDCFacade struct {
 	oidcProvider   oauthgooidc.OIDCProvider // nil for OAuth2-only providers
 }
 
-// NewAuthFacade creates a new OAuth2OIDCFacade.
-func NewAuthFacade(authorisationProvider oauthgoauth2.OAuth2Provider, identityProvider oauthgooidc.OIDCProvider) *OAuth2OIDCFacade {
+// NewOAuth2OIDCFacade creates a new OAuth2OIDCFacade.
+func NewOAuth2OIDCFacade(authorisationProvider oauthgoauth2.OAuth2Provider, identityProvider oauthgooidc.OIDCProvider) *OAuth2OIDCFacade {
 	return &OAuth2OIDCFacade{oAuth2Provider: authorisationProvider, oidcProvider: identityProvider}
 }
 
@@ -41,17 +41,17 @@ func NewAuthFacade(authorisationProvider oauthgoauth2.OAuth2Provider, identityPr
 func (f *OAuth2OIDCFacade) Name() string { return f.oAuth2Provider.Name() }
 
 // AuthURL returns the URL to redirect the user to for authentication.
-func (f *OAuth2OIDCFacade) AuthURL(ctx context.Context, r *http.Request, opts oauthgoauth2.AuthOptions) (string, string, error) {
+func (f *OAuth2OIDCFacade) AuthURL(ctx context.Context, r *http.Request, opts oauthgoauth2.AuthURLOptions) (string, string, error) {
 	return f.oAuth2Provider.AuthURL(ctx, r, opts)
 }
 
 // Exchange exchanges an authorization code for an access token.
-func (f *OAuth2OIDCFacade) Exchange(ctx context.Context, r *http.Request, code, state string) (*oauthgoauth2.Session, error) {
+func (f *OAuth2OIDCFacade) Exchange(ctx context.Context, r *http.Request, code, state string) (*oauthgoauth2.OAuth2Session, error) {
 	return f.oAuth2Provider.Exchange(ctx, r, code, state)
 }
 
 // Refresh refreshes an access token.
-func (f *OAuth2OIDCFacade) Refresh(ctx context.Context, refreshToken string) (*oauthgoauth2.Session, error) {
+func (f *OAuth2OIDCFacade) Refresh(ctx context.Context, refreshToken string) (*oauthgoauth2.OAuth2Session, error) {
 	return f.oAuth2Provider.Refresh(ctx, refreshToken)
 }
 

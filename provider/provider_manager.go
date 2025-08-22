@@ -34,7 +34,7 @@ func NewProviderManager() *ProviderManager {
 }
 
 // LoginHandler is a handler that redirects the user to the OAuth2/OIDC provider's login page.
-func (m *ProviderManager) LoginHandler(getOpts func(r *http.Request) oauthgoauth2.AuthOptions) http.HandlerFunc {
+func (m *ProviderManager) LoginHandler(getOpts func(r *http.Request) oauthgoauth2.AuthURLOptions) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get the provider from the URL path
 		p, ok := m.getProviderFromPath(w, r)

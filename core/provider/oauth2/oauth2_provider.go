@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// AuthOptions are the options for generating an authentication URL.
-type AuthOptions struct {
+// AuthURLOptions are the options for generating an authentication URL.
+type AuthURLOptions struct {
 	RedirectURL string
 	Scopes      []string
 	Prompt      string
@@ -15,8 +15,8 @@ type AuthOptions struct {
 	Extras      map[string]string
 }
 
-// Session represents an OAuth2 session containing an access token, refresh token, and ID token.
-type Session struct {
+// OAuth2Session represents an OAuth2 session containing an access token, refresh token, and ID token.
+type OAuth2Session struct {
 	Provider     string
 	AccessToken  string
 	RefreshToken string
@@ -31,11 +31,11 @@ type OAuth2Provider interface {
 	// Name returns the name of the provider.
 	Name() string
 	// AuthURL returns the URL to redirect the user to for authentication.
-	AuthURL(ctx context.Context, r *http.Request, opts AuthOptions) (url string, opaqueState string, err error)
+	AuthURL(ctx context.Context, r *http.Request, opts AuthURLOptions) (url string, opaqueState string, err error)
 	// Exchange exchanges an authorization code for an access token.
-	Exchange(ctx context.Context, r *http.Request, code string, opaqueState string) (*Session, error)
+	Exchange(ctx context.Context, r *http.Request, code string, opaqueState string) (*OAuth2Session, error)
 	// Refresh refreshes an access token.
-	Refresh(ctx context.Context, refreshToken string) (*Session, error)
+	Refresh(ctx context.Context, refreshToken string) (*OAuth2Session, error)
 	// Revoke revokes a token.
 	Revoke(ctx context.Context, token string) error
 }

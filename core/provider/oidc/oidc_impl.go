@@ -99,7 +99,7 @@ func createVerifierWithoutDiscovery(ctx context.Context, cfg OIDCConfig) (*gooid
 	return verifier, nil, nil
 }
 
-// VerifyIDToken verifies the ID token.
+// VerifyIDToken implements the OIDCDecorator interface and verifies the ID token.
 func (d *OIDCDecorator) VerifyIDToken(ctx context.Context, raw string) error {
 	if raw == "" || d.verifier == nil {
 		return nil
@@ -108,7 +108,7 @@ func (d *OIDCDecorator) VerifyIDToken(ctx context.Context, raw string) error {
 	return err
 }
 
-// UserInfo retrieves user information either via ID token, discovery, or discovery-less mode.
+// UserInfo implements the OIDCDecorator interface and retrieves user information.
 func (d *OIDCDecorator) UserInfo(ctx context.Context, accessToken, idToken string) (*User, error) {
 	if len(idToken) > 0 && d.verifier != nil {
 		return d.userInfoFromIDToken(ctx, idToken)

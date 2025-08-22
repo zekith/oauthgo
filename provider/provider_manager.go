@@ -20,6 +20,8 @@ const (
 	httpInternalServerError = 500
 	successResponseHTML     = "<html><body><h3>Login successful</h3><p>You can close this window.</p></body></html>"
 	htmlContentType         = "text/html; charset=utf-8"
+	EnvSIDCookie            = "SID_COOKIE"
+	DefaultSIDCookie        = "oauthgo_sid"
 )
 
 // ProviderManager is a simple HTTP handler manager for OAuth2/OIDC providers.
@@ -65,7 +67,7 @@ func (m *ProviderManager) writeSuccessResponse(w http.ResponseWriter) error {
 func (m *ProviderManager) CallbackHandler(cookieMgr *oauthgocookie.CookieSessionManager, sessionStore oauthgostore.SessionStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get the provider from the URL path
-		p, ok := m.getProviderFromPath(w, r)
+		provider, ok := m.getProviderFromPath(w, r)
 		if !ok {
 			return
 		}
@@ -73,20 +75,21 @@ func (m *ProviderManager) CallbackHandler(cookieMgr *oauthgocookie.CookieSession
 		code := r.FormValue("code")
 		state := r.FormValue("state")
 
-		// exchange the code for a session and user info
-		sess, err := p.Exchange(r.Context(), r, code, state)
+		// exchange the code for tokens and relevant token info
+		sess, err := provider.Exchange(r.Context(), r, code, state)
 		// if there was an error, return 500
 		if err != nil {
 			http.Error(w, err.Error(), httpInternalServerError)
 			return
 		}
 		// get user info
-		u, err := p.UserInfo(r.Context(), sess.AccessToken, sess.IDToken)
+		u, err := provider.UserInfo(r.Context(), sess.AccessToken, sess.IDToken)
 		if err != nil {
 			http.Error(w, err.Error(), httpInternalServerError)
 			return
 		}
 
+		// set cookie in cookie manager
 		cs := oauthgocookie.CookieSession{
 			Provider: sess.Provider,
 			Subject:  u.Subject,
@@ -100,6 +103,7 @@ func (m *ProviderManager) CallbackHandler(cookieMgr *oauthgocookie.CookieSession
 			return
 		}
 
+		// store session data
 		sid := oauthgoutils.MustRandom(24)
 		sessionData := oauthgostore.SessionData{
 			Provider:     sess.Provider,
@@ -119,16 +123,18 @@ func (m *ProviderManager) CallbackHandler(cookieMgr *oauthgocookie.CookieSession
 			return
 		}
 
+		// set sid cookie, lightweight pointer to the actual session data in the backend store.
 		http.SetCookie(w, &http.Cookie{
-			Name:     env("SID_COOKIE", "oauthgo_sid"),
+			Name:     env(EnvSIDCookie, DefaultSIDCookie),
 			Value:    sid,
 			Path:     "/",
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		})
 
+		// write success response
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, err = w.Write([]byte("<html><body><h3>Login successful</h3><p>Cookie set. <a href='/me'>View profile</a> | <a href='/logout'>Logout</a> | <a href='/logout-and-revoke'>Logout & Revoke</a></p></body></html>"))
+		_, err = w.Write([]byte("<html><body><h3>Login successful</h3><provider>Cookie set. <a href='/me'>View profile</a> | <a href='/logout'>Logout</a> | <a href='/logout-and-revoke'>Logout & Revoke</a></provider></body></html>"))
 		if err != nil {
 			panic(err)
 			return

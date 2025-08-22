@@ -43,7 +43,6 @@ func (m *MemoryReplayProtector) FirstSeen(ctx context.Context, key string, ttl t
 
 // cleanupExpiredEntries removes expired entries from the seen map
 func (m *MemoryReplayProtector) cleanupExpiredEntries(now int64) {
-
 	// iterate over the map and remove expired entries
 	for k, e := range m.seen {
 		if e <= now {

@@ -29,7 +29,7 @@ type OAuth2Config struct {
 	UsePKCE       bool              // controls whether to use PKCE (Proof Key for Code Exchange) in the OAuth2 flow
 }
 
-// BaseOAuth2Provider is an OAuth2 provider that implements the AuthorisationProvider interface.
+// BaseOAuth2Provider is an OAuth2 provider that implements the OAuth2Provider interface.
 type BaseOAuth2Provider struct {
 	name       string
 	cfg        OAuth2Config
@@ -90,7 +90,7 @@ func createOAuth2Config(cfg OAuth2Config, scopes []string) *oauth2.Config {
 	}
 }
 
-// Name implements the AuthorisationProvider interface method and returns the provider name.
+// Name implements the OAuth2Provider interface method and returns the provider name.
 func (p *BaseOAuth2Provider) Name() string {
 	return p.name
 }
@@ -101,7 +101,7 @@ func (p *BaseOAuth2Provider) cloneOAuth() *oauth2.Config {
 	return &c
 }
 
-// AuthURL implements the AuthorisationProvider interface method and returns the URL to redirect the user to for authentication.
+// AuthURL implements the OAuth2Provider interface method and returns the URL to redirect the user to for authentication.
 func (p *BaseOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, opts AuthOptions) (string, string, error) {
 	o := p.cloneOAuth()
 	o.RedirectURL = opts.RedirectURL
@@ -184,7 +184,7 @@ func (p *BaseOAuth2Provider) buildAuthParams(opts AuthOptions, pkce *oauthgoutil
 	return params, nil
 }
 
-// Exchange implements the AuthorisationProvider interface method and exchanges the code for a token.
+// Exchange implements the OAuth2Provider interface method and exchanges the code for a token.
 func (p *BaseOAuth2Provider) Exchange(ctx context.Context, r *http.Request, code, opaque string) (*Session, error) {
 	sp, err := p.validateAndDecodeState(opaque)
 	if err != nil {
@@ -278,7 +278,7 @@ func (p *BaseOAuth2Provider) createSessionFromToken(tok *oauth2.Token) *Session 
 	}
 }
 
-// Refresh implements the AuthorisationProvider interface method and refreshes the token.
+// Refresh implements the OAuth2Provider interface method and refreshes the token.
 func (p *BaseOAuth2Provider) Refresh(ctx context.Context, refreshToken string) (*Session, error) {
 	tok, err := p.refreshTokenFromSource(ctx, refreshToken)
 	if err != nil {
@@ -301,7 +301,7 @@ func (p *BaseOAuth2Provider) refreshTokenFromSource(ctx context.Context, refresh
 	return tok, nil
 }
 
-// Revoke implements the AuthorisationProvider interface method and revokes the token.
+// Revoke implements the OAuth2Provider interface method and revokes the token.
 func (p *BaseOAuth2Provider) Revoke(ctx context.Context, token string) error {
 	if p.cfg.RevocationURL == "" {
 		return nil

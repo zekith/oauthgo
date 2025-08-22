@@ -7,7 +7,7 @@ import (
 	"github.com/zekith/oauthgo/core/types"
 )
 
-var microsoftDefaults = &oauthgotypes.ProviderOptions{
+var microsoftDefaults = &oauthgotypes.OAuth2OIDCOptions{
 	Name: pointer.ToString("microsoft"),
 	Mode: pointer.To(oauthgotypes.OIDC), // Microsoft supports OIDC (recommended)
 
@@ -27,6 +27,6 @@ var microsoftDefaults = &oauthgotypes.ProviderOptions{
 	},
 }
 
-func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.Provider, error) {
-	return oauthgohelper.BuildProviderFromDefaults(input, microsoftDefaults)
+func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
+	return oauthgohelper.NewOAuthOIDCProvider(input, microsoftDefaults)
 }

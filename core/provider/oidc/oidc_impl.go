@@ -26,7 +26,7 @@ type OIDCConfig struct {
 
 // OIDCDecorator wraps an OAuth2 provider and adds OIDC-specific functionality.
 type OIDCDecorator struct {
-	base       oauthgoauth2.AuthorisationProvider // wrapped OAuth2 provider
+	base       oauthgoauth2.OAuth2Provider // wrapped OAuth2 provider
 	httpClient *http.Client
 	verifier   *gooidc.IDTokenVerifier // non-nil in OIDC mode
 	idp        *gooidc.Provider        // present when discovery is used
@@ -34,7 +34,7 @@ type OIDCDecorator struct {
 }
 
 // NewOIDCDecorator creates a new OIDCDecorator.
-func NewOIDCDecorator(base oauthgoauth2.AuthorisationProvider, httpClient *http.Client, cfg OIDCConfig) (*OIDCDecorator, error) {
+func NewOIDCDecorator(base oauthgoauth2.OAuth2Provider, httpClient *http.Client, cfg OIDCConfig) (*OIDCDecorator, error) {
 	httpClient = initializeHTTPClient(httpClient)
 
 	d := &OIDCDecorator{

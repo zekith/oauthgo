@@ -24,12 +24,12 @@ const (
 
 // ProviderManager is a simple HTTP handler manager for OAuth2/OIDC providers.
 type ProviderManager struct {
-	Providers map[string]oauthgoprovider.Provider
+	Providers map[string]oauthgoprovider.OAuthO2IDCProvider
 }
 
 func NewProviderManager() *ProviderManager {
 	return &ProviderManager{
-		Providers: make(map[string]oauthgoprovider.Provider),
+		Providers: make(map[string]oauthgoprovider.OAuthO2IDCProvider),
 	}
 }
 
@@ -154,7 +154,7 @@ func DefaultRedirectURL(r *http.Request) string {
 }
 
 // getProviderFromPath extracts provider name from URL path and returns the provider
-func (m *ProviderManager) getProviderFromPath(w http.ResponseWriter, r *http.Request) (oauthgoprovider.Provider, bool) {
+func (m *ProviderManager) getProviderFromPath(w http.ResponseWriter, r *http.Request) (oauthgoprovider.OAuthO2IDCProvider, bool) {
 	// split the path into provider name and remaining path
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	// if the path is empty or doesn't contain a provider name, return 404

@@ -1,0 +1,232 @@
+package oauthgohelper
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/AlekSi/pointer"
+	coreprov "github.com/zekith/oauthgo/core/provider"
+	oauthgoauth2 "github.com/zekith/oauthgo/core/provider/oauth2"
+	oidccore "github.com/zekith/oauthgo/core/provider/oidc"
+	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
+	oauthgostate "github.com/zekith/oauthgo/core/state"
+	"github.com/zekith/oauthgo/core/types"
+)
+
+// OAuthProviderConfig contains required fields to configure an OAuth2 or OIDC provider.
+type OAuthProviderConfig struct {
+	stateCodec              *oauthgostate.StateCodec
+	replayProtector         oauthgoreplay.ReplayProtector
+	httpClient              *http.Client
+	clientID                string
+	clientSecret            string
+	name                    string
+	scopes                  []string
+	authURL                 string
+	tokenURL                string
+	revokeTokenURL          string
+	usePKCE                 bool
+	skipIDTokenVerification bool
+}
+
+// NewOAuthOIDCProvider constructs a provider (OAuth2 or OIDC) based on input + defaults.
+func NewOAuthOIDCProvider(
+	input *oauthgotypes.ProviderInput,
+	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
+) (coreprov.OAuthO2IDCProvider, error) {
+
+	opts := input.OAuth2ODICOptions
+	if opts == nil {
+		opts = defaultOpts
+	}
+
+	config := newOAuthProviderConfig(input, opts, defaultOpts)
+	mode := pointer.Get(resolveMode(opts, func(o *oauthgotypes.OAuth2OIDCOptions) *oauthgotypes.Mode { return o.Mode }, defaultOpts.Mode))
+
+	switch mode {
+	case oauthgotypes.OAuth2Only:
+		return buildOAuth2Provider(config, opts, defaultOpts)
+	case oauthgotypes.OIDC:
+		return buildOIDCProvider(config, opts, defaultOpts)
+	default:
+		return nil, fmt.Errorf("unsupported mode")
+	}
+}
+
+func newOAuthProviderConfig(
+	input *oauthgotypes.ProviderInput,
+	opts *oauthgotypes.OAuth2OIDCOptions,
+	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
+) *OAuthProviderConfig {
+
+	return &OAuthProviderConfig{
+		stateCodec:      input.StateCodec,
+		replayProtector: input.ReplayProtector,
+		httpClient:      input.HttpClient,
+		clientID:        input.ClientID,
+		clientSecret:    input.ClientSecret,
+		name:            resolveName(opts, func(o *oauthgotypes.OAuth2OIDCOptions) string { return pointer.GetString(o.Name) }, pointer.GetString(defaultOpts.Name)),
+		authURL:         pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.AuthURL }, defaultOpts.OAuth2.AuthURL)),
+		tokenURL:        pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.TokenURL }, defaultOpts.OAuth2.TokenURL)),
+		revokeTokenURL:  pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.RevocationURL }, defaultOpts.OAuth2.RevocationURL)),
+		usePKCE:         pointer.GetBool(resolveUsePKCE(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *bool { return o.UsePKCE }, defaultOpts.OAuth2.UsePKCE)),
+	}
+}
+
+func buildOAuth2Provider(
+	config *OAuthProviderConfig,
+	opts *oauthgotypes.OAuth2OIDCOptions,
+	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
+) (coreprov.OAuthO2IDCProvider, error) {
+
+	config.scopes = pointer.Get(resolveScopes(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *[]string { return o.Scopes }, defaultOpts.OAuth2.Scopes))
+	provider := newOAuth2Provider(config)
+	return coreprov.NewAuthFacade(provider, nil), nil
+}
+
+func buildOIDCProvider(
+	config *OAuthProviderConfig,
+	opts *oauthgotypes.OAuth2OIDCOptions,
+	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
+) (coreprov.OAuthO2IDCProvider, error) {
+
+	config.scopes = pointer.Get(resolveOIDCScopes(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *[]string { return o.Scopes }, defaultOpts.OIDC.Scopes))
+	config.skipIDTokenVerification = pointer.GetBool(resolveDisableIdTokenVerification(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *bool { return o.DisableIdTokenVerification }, defaultOpts.OIDC.DisableIdTokenVerification))
+
+	provider := newOAuth2Provider(config)
+
+	oidcDecorator, err := newOIDCDecorator(config, provider, opts, defaultOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return coreprov.NewAuthFacade(provider, oidcDecorator), nil
+}
+
+func newOAuth2Provider(config *OAuthProviderConfig) oauthgoauth2.OAuth2Provider {
+	return oauthgoauth2.NewBaseOAuth2Provider(config.name, oauthgoauth2.OAuth2Config{
+		ClientID:      config.clientID,
+		ClientSecret:  config.clientSecret,
+		Scopes:        config.scopes,
+		AuthURL:       config.authURL,
+		TokenURL:      config.tokenURL,
+		RevocationURL: config.revokeTokenURL,
+		UsePKCE:       config.usePKCE,
+	}, config.stateCodec, config.replayProtector, config.httpClient)
+}
+
+func newOIDCDecorator(
+	config *OAuthProviderConfig,
+	auth oauthgoauth2.OAuth2Provider,
+	opts *oauthgotypes.OAuth2OIDCOptions,
+	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
+) (*oidccore.OIDCDecorator, error) {
+
+	issuer := pointer.GetString(resolveOIDCURL(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *string { return o.Issuer }, defaultOpts.OIDC.Issuer))
+	jwksURL := pointer.GetString(resolveOIDCURL(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *string { return o.JWKSURL }, defaultOpts.OIDC.JWKSURL))
+	uiURL := pointer.GetString(resolveOIDCURL(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *string { return o.UserInfoURL }, defaultOpts.OIDC.UserInfoURL))
+	disableDiscovery := pointer.GetBool(resolveDisableDiscovery(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *bool { return o.DisableDiscovery }, defaultOpts.OIDC.DisableDiscovery))
+
+	return oidccore.NewOIDCDecorator(auth, config.httpClient, oidccore.OIDCConfig{
+		Issuer:                     issuer,
+		JWKSURL:                    jwksURL,
+		UserInfoURL:                uiURL,
+		DisableDiscovery:           disableDiscovery,
+		ClientID:                   config.clientID,
+		DisableIdTokenVerification: config.skipIDTokenVerification,
+	})
+}
+
+// resolveMode resolves the mode.
+func resolveMode(opts *oauthgotypes.OAuth2OIDCOptions, getter func(*oauthgotypes.OAuth2OIDCOptions) *oauthgotypes.Mode, defaultMode *oauthgotypes.Mode) *oauthgotypes.Mode {
+	if opts != nil {
+		if mode := getter(opts); mode != nil {
+			return mode
+		}
+	}
+	return defaultMode
+}
+
+// resolveDisableDiscovery resolves the disable discovery flag.
+func resolveDisableDiscovery(opts *oauthgotypes.OIDCOptions, getter func(*oauthgotypes.OIDCOptions) *bool, defaultDisableDiscovery *bool) *bool {
+	if opts != nil {
+		if disableDiscovery := getter(opts); disableDiscovery != nil {
+			return disableDiscovery
+		}
+	}
+	return defaultDisableDiscovery
+}
+
+// resolveUsePKCE resolves the use PKCE flag.
+func resolveUsePKCE(opts *oauthgotypes.OAuth2Options, getter func(*oauthgotypes.OAuth2Options) *bool, defaultUsePKCE *bool) *bool {
+	if opts != nil {
+		if usePKCE := getter(opts); usePKCE != nil {
+			return usePKCE
+		}
+	}
+	if defaultUsePKCE == nil {
+		// Default to true if not set
+		return pointer.ToBool(true)
+	}
+	return defaultUsePKCE
+}
+
+// resolveDisableIdTokenVerification resolves the disable id token verification flag.
+func resolveDisableIdTokenVerification(opts *oauthgotypes.OIDCOptions, getter func(*oauthgotypes.OIDCOptions) *bool, defaultDisableIdTokenVerification *bool) *bool {
+	if opts != nil {
+		if disableIdTokenVerification := getter(opts); disableIdTokenVerification != nil {
+			return disableIdTokenVerification
+		}
+	}
+	return defaultDisableIdTokenVerification
+}
+
+// resolveName resolves the name.
+func resolveName(opts *oauthgotypes.OAuth2OIDCOptions, getter func(*oauthgotypes.OAuth2OIDCOptions) string, defaultName string) string {
+	if opts != nil {
+		if name := getter(opts); name != "" {
+			return name
+		}
+	}
+	return defaultName
+}
+
+// resolveURL resolves the URL.
+func resolveURL(oauth2Opts *oauthgotypes.OAuth2Options, getter func(*oauthgotypes.OAuth2Options) *string, defaultURL *string) *string {
+	if oauth2Opts != nil {
+		if url := getter(oauth2Opts); url != nil {
+			return url
+		}
+	}
+	return defaultURL
+}
+
+// resolveOIDCURL resolves the OIDC URL.
+func resolveOIDCURL(oidcOpts *oauthgotypes.OIDCOptions, getter func(*oauthgotypes.OIDCOptions) *string, defaultURL *string) *string {
+	if oidcOpts != nil {
+		if url := getter(oidcOpts); url != nil {
+			return url
+		}
+	}
+	return defaultURL
+}
+
+// resolveScopes resolves the scopes.
+func resolveScopes(oauth2Opts *oauthgotypes.OAuth2Options, getter func(options *oauthgotypes.OAuth2Options) *[]string, defaultScopes *[]string) *[]string {
+	if oauth2Opts != nil {
+		if scopes := getter(oauth2Opts); scopes != nil {
+			return scopes
+		}
+	}
+	return defaultScopes
+}
+
+// resolveOIDCScopes resolves the OIDC scopes.
+func resolveOIDCScopes(oidcOpts *oauthgotypes.OIDCOptions, getter func(*oauthgotypes.OIDCOptions) *[]string, defaultScopes *[]string) *[]string {
+	if oidcOpts != nil {
+		if scopes := getter(oidcOpts); scopes != nil {
+			return scopes
+		}
+	}
+	return defaultScopes
+}

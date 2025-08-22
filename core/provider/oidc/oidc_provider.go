@@ -20,8 +20,8 @@ type User struct {
 	RawProfile    map[string]any
 }
 
-// IdentityProvider Identity-only surface (OIDC or custom profile).
-type IdentityProvider interface {
+// OIDCProvider Identity-only surface (OIDC or custom profile).
+type OIDCProvider interface {
 	// UserInfo returns the user details.
 	UserInfo(ctx context.Context, accessToken, idToken string) (*User, error)
 	// VerifyIDToken verifies the JWT ID token.

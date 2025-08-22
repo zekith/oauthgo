@@ -36,8 +36,8 @@ type OIDCOptions struct {
 	DisableIdTokenVerification *bool     // optional, defaults to false. Set to true to skip id_token verification (not recommended)
 }
 
-// ProviderOptions are the options for the provider.
-type ProviderOptions struct {
+// OAuth2OIDCOptions are the options for the provider.
+type OAuth2OIDCOptions struct {
 	Name   *string        // optional
 	Mode   *Mode          // optional
 	OAuth2 *OAuth2Options // optional
@@ -46,10 +46,10 @@ type ProviderOptions struct {
 
 // ProviderInput is the input for the provider.
 type ProviderInput struct {
-	StateCodec      *oauthgostate.StateCodec
-	ReplayProtector oauthgoreplay.ReplayProtector
-	HttpClient      *http.Client
-	ClientID        string
-	ClientSecret    string
-	Options         *ProviderOptions
+	StateCodec        *oauthgostate.StateCodec
+	ReplayProtector   oauthgoreplay.ReplayProtector
+	HttpClient        *http.Client
+	ClientID          string
+	ClientSecret      string
+	OAuth2ODICOptions *OAuth2OIDCOptions
 }

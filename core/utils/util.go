@@ -3,7 +3,6 @@ package oauthgoutils
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"time"
 )
 
 // RandomStringURLSafe returns a URL-safe base64 string (no padding).
@@ -23,6 +22,3 @@ func MustRandom(n int) string {
 	}
 	return s
 }
-
-// NowUnix returns the current time in Unix seconds.
-func NowUnix() int64 { return time.Now().Unix() }

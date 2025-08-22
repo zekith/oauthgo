@@ -7,7 +7,7 @@ import (
 	"github.com/zekith/oauthgo/core/types"
 )
 
-var githubDefaults = &oauthgotypes.ProviderOptions{
+var githubDefaults = &oauthgotypes.OAuth2OIDCOptions{
 	Name: pointer.ToString("github"),
 	Mode: pointer.To(oauthgotypes.OAuth2Only),
 
@@ -21,6 +21,6 @@ var githubDefaults = &oauthgotypes.ProviderOptions{
 
 }
 
-func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.Provider, error) {
-	return oauthgohelper.BuildProviderFromDefaults(input, githubDefaults)
+func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
+	return oauthgohelper.NewOAuthOIDCProvider(input, githubDefaults)
 }

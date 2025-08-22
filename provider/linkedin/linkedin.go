@@ -7,8 +7,8 @@ import (
 	"github.com/zekith/oauthgo/core/types"
 )
 
-// Provider defaults for LinkedIn
-var linkedInDefaults = &oauthgotypes.ProviderOptions{
+// OAuthO2IDCProvider defaults for LinkedIn
+var linkedInDefaults = &oauthgotypes.OAuth2OIDCOptions{
 	Name: pointer.ToString("linkedin"),
 	Mode: pointer.To(oauthgotypes.OIDC),
 
@@ -28,6 +28,6 @@ var linkedInDefaults = &oauthgotypes.ProviderOptions{
 	},
 }
 
-func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.Provider, error) {
-	return oauthgohelper.BuildProviderFromDefaults(input, linkedInDefaults)
+func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
+	return oauthgohelper.NewOAuthOIDCProvider(input, linkedInDefaults)
 }

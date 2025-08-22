@@ -7,7 +7,7 @@ import (
 	"github.com/zekith/oauthgo/core/types"
 )
 
-var googleDefaults = &oauthgotypes.ProviderOptions{
+var googleDefaults = &oauthgotypes.OAuth2OIDCOptions{
 	Name: pointer.ToString("google"),
 	Mode: pointer.To(oauthgotypes.OIDC), // Google strongly recommends OIDC
 
@@ -24,6 +24,6 @@ var googleDefaults = &oauthgotypes.ProviderOptions{
 	},
 }
 
-func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.Provider, error) {
-	return oauthgohelper.BuildProviderFromDefaults(input, googleDefaults)
+func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
+	return oauthgohelper.NewOAuthOIDCProvider(input, googleDefaults)
 }

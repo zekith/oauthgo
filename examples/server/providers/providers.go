@@ -45,7 +45,7 @@ func addLinkedIn(c *oauthgobootstrap.Core) error {
 		HttpClient:      c.HTTPClient,
 		ClientID:        clientID,
 		ClientSecret:    secret,
-		Options: &coreprov.ProviderOptions{
+		OAuth2ODICOptions: &coreprov.OAuth2OIDCOptions{
 			Name:   pointer.ToString("linkedin"),
 			Mode:   pointer.To(coreprov.OIDC),
 			OAuth2: &coreprov.OAuth2Options{}, // leave empty to use provider defaults
@@ -67,7 +67,7 @@ func addGoogle(c *oauthgobootstrap.Core) error {
 	if clientID == "" || secret == "" {
 		return fmt.Errorf("Google: set GOOGLE_KEY and GOOGLE_SECRET")
 	}
-	// if input Options are not set, the provider will use the default values
+	// if input OAuth2ODICOptions are not set, the provider will use the default values
 	input := &coreprov.ProviderInput{
 		StateCodec:      c.StateCodec,
 		ReplayProtector: c.ReplayProtector,
@@ -120,7 +120,7 @@ func addMicrosoft(c *oauthgobootstrap.Core) error {
 		HttpClient:      c.HTTPClient,
 		ClientID:        clientID,
 		ClientSecret:    clientSecret,
-		// you can also inject Options here to override defaults
+		// you can also inject OAuth2ODICOptions here to override defaults
 	}
 	p, err := oauthgomicrosoft.NewWithOptions(input)
 

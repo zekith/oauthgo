@@ -20,15 +20,20 @@ func LoadDotEnv() error {
 		return nil
 	}
 	for _, ln := range strings.Split(string(b), "\n") {
-		ln = strings.TrimSpace(ln)
-		if ln == "" || strings.HasPrefix(ln, "#") {
-			continue
-		}
-		parts := strings.SplitN(ln, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		_ = os.Setenv(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+		parseEnvLine(ln)
 	}
 	return nil
+}
+
+// parseEnvLine parses a single line from .env file and sets the environment variable if valid.
+func parseEnvLine(line string) {
+	line = strings.TrimSpace(line)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return
+	}
+	parts := strings.SplitN(line, "=", 2)
+	if len(parts) != 2 {
+		return
+	}
+	_ = os.Setenv(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 }

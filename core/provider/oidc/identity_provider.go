@@ -22,6 +22,8 @@ type User struct {
 
 // IdentityProvider Identity-only surface (OIDC or custom profile).
 type IdentityProvider interface {
+	// UserInfo returns the user details.
 	UserInfo(ctx context.Context, accessToken, idToken string) (*User, error)
-	VerifyIDToken(ctx context.Context, rawIDToken string) error // no-op for pure OAuth2
+	// VerifyIDToken verifies the JWT ID token.
+	VerifyIDToken(ctx context.Context, rawIDToken string) error
 }

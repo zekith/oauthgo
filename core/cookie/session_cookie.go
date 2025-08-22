@@ -33,28 +33,36 @@ func (m *CookieSessionManager) Set(w http.ResponseWriter, s CookieSession) error
 	if err != nil {
 		return err
 	}
-	// sign the cookie
+
+	signedPayload := m.signSessionData(b)
+	cookie := m.createSessionCookie(signedPayload, s.Expiry)
+
+	http.SetCookie(w, cookie)
+	return nil
+}
+
+// signSessionData signs the session data and returns the base64-encoded payload.
+func (m *CookieSessionManager) signSessionData(data []byte) string {
 	h := hmac.New(sha256.New, m.Secret)
-	h.Write(b)
+	h.Write(data)
 	sig := h.Sum(nil)
-	// create the cookie payload
-	payload := append(b, sig...)
-	// encode the cookie payload
-	val := base64.RawURLEncoding.EncodeToString(payload)
-	// Create the cookie
-	cookie := &http.Cookie{
+
+	payload := append(data, sig...)
+	return base64.RawURLEncoding.EncodeToString(payload)
+}
+
+// createSessionCookie creates an HTTP cookie with the signed payload.
+func (m *CookieSessionManager) createSessionCookie(value string, expiry time.Time) *http.Cookie {
+	return &http.Cookie{
 		Name:     m.Name,
-		Value:    val,
+		Value:    value,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   m.Secure,
 		SameSite: http.SameSiteLaxMode,
-		Expires:  s.Expiry,
+		Expires:  expiry,
 		Domain:   m.Domain,
 	}
-	// Set the cookie
-	http.SetCookie(w, cookie)
-	return nil
 }
 
 // Clear clears a session cookie.
@@ -75,32 +83,52 @@ func (m *CookieSessionManager) Clear(w http.ResponseWriter) {
 
 // Parse parses a session cookie.
 func (m *CookieSessionManager) Parse(r *http.Request) (*CookieSession, bool) {
-	// get the cookie
+	rawData, signature, ok := m.getCookieValue(r)
+	if !ok {
+		return nil, false
+	}
+
+	if !m.verifyCookieSignature(rawData, signature) {
+		return nil, false
+	}
+
+	return m.parseSessionData(rawData)
+}
+
+// getCookieValue retrieves and decodes the cookie value, returning raw data and signature.
+func (m *CookieSessionManager) getCookieValue(r *http.Request) ([]byte, []byte, bool) {
 	c, err := r.Cookie(m.Name)
 	if err != nil {
-		return nil, false
+		return nil, nil, false
 	}
-	// decode the cookie
+
 	b, err := base64.RawURLEncoding.DecodeString(c.Value)
 	if err != nil || len(b) < sha256.Size {
-		return nil, false
+		return nil, nil, false
 	}
-	// verify the cookie
-	raw, sig := b[:len(b)-sha256.Size], b[len(b)-sha256.Size:]
+
+	raw := b[:len(b)-sha256.Size]
+	sig := b[len(b)-sha256.Size:]
+	return raw, sig, true
+}
+
+// verifyCookieSignature verifies the HMAC signature of the cookie data.
+func (m *CookieSessionManager) verifyCookieSignature(rawData, signature []byte) bool {
 	h := hmac.New(sha256.New, m.Secret)
-	h.Write(raw)
-	if !hmac.Equal(sig, h.Sum(nil)) {
-		return nil, false
-	}
-	// unmarshal the cookie
+	h.Write(rawData)
+	return hmac.Equal(signature, h.Sum(nil))
+}
+
+// parseSessionData unmarshals the session data and validates expiry.
+func (m *CookieSessionManager) parseSessionData(rawData []byte) (*CookieSession, bool) {
 	var s CookieSession
-	if err := json.Unmarshal(raw, &s); err != nil {
+	if err := json.Unmarshal(rawData, &s); err != nil {
 		return nil, false
 	}
-	// check the expiry
+
 	if time.Now().After(s.Expiry) {
 		return nil, false
 	}
-	// return the session
+
 	return &s, true
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	oauthgoauth2 "github.com/zekith/oauthgo/core/oauth2"
-	oauthgooidc "github.com/zekith/oauthgo/core/oidc"
+	"github.com/zekith/oauthgo/core/provider/oauth2"
+	"github.com/zekith/oauthgo/core/provider/oidc"
 )
 
 type Provider interface {

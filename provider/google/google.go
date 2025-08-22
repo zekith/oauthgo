@@ -2,27 +2,28 @@ package oauthgogoogle
 
 import (
 	"github.com/AlekSi/pointer"
-	oauthgohelper "github.com/zekith/oauthgo/core/helper"
 	coreprov "github.com/zekith/oauthgo/core/provider"
+	"github.com/zekith/oauthgo/core/provider/helper"
+	"github.com/zekith/oauthgo/core/types"
 )
 
-var googleDefaults = &coreprov.ProviderOptions{
+var googleDefaults = &oauthgotypes.ProviderOptions{
 	Name: pointer.ToString("google"),
-	Mode: pointer.To(coreprov.OIDC), // Google strongly recommends OIDC
+	Mode: pointer.To(oauthgotypes.OIDC), // Google strongly recommends OIDC
 
-	OAuth2: &coreprov.OAuth2Options{
+	OAuth2: &oauthgotypes.OAuth2Options{
 		AuthURL:       pointer.ToString("https://accounts.google.com/o/oauth2/v2/auth"),
 		TokenURL:      pointer.ToString("https://oauth2.googleapis.com/token"),
 		RevocationURL: pointer.ToString("https://oauth2.googleapis.com/revoke"),
 		Scopes:        pointer.To([]string{"email"}), // Applicable for OAuth2-only mode will be overridden by OIDC scopes if OIDC is enabled
 	},
 
-	OIDC: &coreprov.OIDCOptions{
+	OIDC: &oauthgotypes.OIDCOptions{
 		Issuer: pointer.ToString("https://accounts.google.com"),
 		Scopes: pointer.To([]string{"openid", "profile", "email"}), // Applicable for OIDC mode
 	},
 }
 
-func NewWithOptions(input *coreprov.ProviderInput) (coreprov.Provider, error) {
+func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.Provider, error) {
 	return oauthgohelper.BuildProviderFromDefaults(input, googleDefaults)
 }

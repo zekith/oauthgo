@@ -2,15 +2,16 @@ package oauthgogithub
 
 import (
 	"github.com/AlekSi/pointer"
-	oauthgohelper "github.com/zekith/oauthgo/core/helper"
 	coreprov "github.com/zekith/oauthgo/core/provider"
+	"github.com/zekith/oauthgo/core/provider/helper"
+	"github.com/zekith/oauthgo/core/types"
 )
 
-var githubDefaults = &coreprov.ProviderOptions{
+var githubDefaults = &oauthgotypes.ProviderOptions{
 	Name: pointer.ToString("github"),
-	Mode: pointer.To(coreprov.OAuth2Only),
+	Mode: pointer.To(oauthgotypes.OAuth2Only),
 
-	OAuth2: &coreprov.OAuth2Options{
+	OAuth2: &oauthgotypes.OAuth2Options{
 		AuthURL:       pointer.ToString("https://github.com/login/oauth/authorize"),
 		TokenURL:      pointer.ToString("https://github.com/login/oauth/access_token"),
 		RevocationURL: nil, // GitHub does not support revocation
@@ -20,6 +21,6 @@ var githubDefaults = &coreprov.ProviderOptions{
 
 }
 
-func NewWithOptions(input *coreprov.ProviderInput) (coreprov.Provider, error) {
+func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.Provider, error) {
 	return oauthgohelper.BuildProviderFromDefaults(input, githubDefaults)
 }

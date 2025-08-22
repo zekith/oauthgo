@@ -1,4 +1,4 @@
-package oauthgoprovider
+package oauthgotypes
 
 import (
 	"net/http"
@@ -12,7 +12,6 @@ type Mode int
 const (
 	OAuth2Only Mode = iota
 	OIDC
-	OAuth2PKCE
 )
 
 type OAuth2Options struct {

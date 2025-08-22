@@ -2,23 +2,24 @@ package oauthgolinkedin
 
 import (
 	"github.com/AlekSi/pointer"
-	oauthgohelper "github.com/zekith/oauthgo/core/helper"
 	coreprov "github.com/zekith/oauthgo/core/provider" // your facade
+	"github.com/zekith/oauthgo/core/provider/helper"
+	"github.com/zekith/oauthgo/core/types"
 )
 
 // Provider defaults for LinkedIn
-var linkedInDefaults = &coreprov.ProviderOptions{
+var linkedInDefaults = &oauthgotypes.ProviderOptions{
 	Name: pointer.ToString("linkedin"),
-	Mode: pointer.To(coreprov.OIDC),
+	Mode: pointer.To(oauthgotypes.OIDC),
 
-	OAuth2: &coreprov.OAuth2Options{
+	OAuth2: &oauthgotypes.OAuth2Options{
 		AuthURL:       pointer.ToString("https://www.linkedin.com/oauth/v2/authorization"),
 		TokenURL:      pointer.ToString("https://www.linkedin.com/oauth/v2/accessToken"),
 		RevocationURL: pointer.ToString("https://www.linkedin.com/oauth/v2/revoke"),
 		Scopes:        pointer.To([]string{"email"}), // choose minimal OAuth2 default
 		UsePKCE:       pointer.ToBool(false),         // PKCE is not supported for LinkedIn yet in this library as special handling is required
 	},
-	OIDC: &coreprov.OIDCOptions{
+	OIDC: &oauthgotypes.OIDCOptions{
 		Issuer:           pointer.ToString("https://www.linkedin.com/oauth"),
 		JWKSURL:          pointer.ToString("https://www.linkedin.com/oauth/openid/jwks"),
 		UserInfoURL:      pointer.ToString("https://api.linkedin.com/v2/userinfo"),
@@ -27,6 +28,6 @@ var linkedInDefaults = &coreprov.ProviderOptions{
 	},
 }
 
-func NewWithOptions(input *coreprov.ProviderInput) (coreprov.Provider, error) {
+func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.Provider, error) {
 	return oauthgohelper.BuildProviderFromDefaults(input, linkedInDefaults)
 }

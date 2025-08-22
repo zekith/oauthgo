@@ -6,7 +6,7 @@ import (
 
 	"github.com/AlekSi/pointer"
 	"github.com/zekith/oauthgo/core/bootstrap"
-	coreprov "github.com/zekith/oauthgo/core/provider"
+	coreprov "github.com/zekith/oauthgo/core/types"
 	oauthgogithub "github.com/zekith/oauthgo/provider/github"
 	oauthgogoogle "github.com/zekith/oauthgo/provider/google"
 	"github.com/zekith/oauthgo/provider/linkedin"

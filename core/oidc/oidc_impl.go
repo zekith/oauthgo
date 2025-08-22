@@ -15,11 +15,12 @@ import (
 )
 
 type OIDCConfig struct {
-	Issuer           string
-	DisableDiscovery bool
-	JWKSURL          string
-	UserInfoURL      string // for discovery-less
-	ClientID         string // pass explicitly, so we never need to "extract" it
+	Issuer                     string
+	DisableDiscovery           bool
+	DisableIdTokenVerification bool
+	JWKSURL                    string
+	UserInfoURL                string // for discovery-less
+	ClientID                   string // pass explicitly, so we never need to "extract" it
 }
 
 type OIDCDecorator struct {
@@ -50,6 +51,9 @@ func NewOIDCDecorator(base oauthgoauth2.AuthorisationProvider, httpClient *http.
 		}
 		ks := gooidc.NewRemoteKeySet(ctx, cfg.JWKSURL)
 		d.verifier = gooidc.NewVerifier(cfg.Issuer, ks, &gooidc.Config{ClientID: cfg.ClientID})
+	}
+	if cfg.DisableIdTokenVerification {
+		d.verifier = nil // disable verification
 	}
 	return d, nil
 }
@@ -91,7 +95,6 @@ func (d *OIDCDecorator) UserInfo(ctx context.Context, accessToken, idToken strin
 		return claims.ToUser(), nil
 	}
 
-	log.Println("Using discovery-less path to retrieve user info")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.cfg.UserInfoURL, nil)
 	if err != nil {
 		return nil, err

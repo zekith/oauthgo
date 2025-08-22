@@ -81,7 +81,7 @@ func (p *BaseOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, opts 
 	csrf, _ := oauthgoutils.RandomStringURLSafe(16)
 	var pkce *oauthgoutils.PKCE
 	// PKCE is optional in OAuth2, but if the provider supports it, we use it
-	if opts.UsePKCE && p.cfg.UsePKCE {
+	if p.cfg.UsePKCE {
 		fmt.Println("Using PKCE for OAuth2 flow")
 		pkce, _ = oauthgoutils.NewPKCE()
 	}

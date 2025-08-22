@@ -7,8 +7,10 @@ import (
 	"github.com/AlekSi/pointer"
 	"github.com/zekith/oauthgo/core/bootstrap"
 	coreprov "github.com/zekith/oauthgo/core/provider"
+	oauthgogithub "github.com/zekith/oauthgo/provider/github"
 	oauthgogoogle "github.com/zekith/oauthgo/provider/google"
 	"github.com/zekith/oauthgo/provider/linkedin"
+	oauthgomicrosoft "github.com/zekith/oauthgo/provider/microsoft"
 )
 
 // AddProviders adds all the OAuth providers to the OAuth manager.
@@ -19,7 +21,12 @@ func AddProviders(c *oauthgobootstrap.Core) error {
 	if err := addGoogle(c); err != nil {
 		return fmt.Errorf("failed to add Google provider: %w", err)
 	}
-
+	if err := addGitHub(c); err != nil {
+		return fmt.Errorf("failed to add GitHub provider: %w", err)
+	}
+	if err := addMicrosoft(c); err != nil {
+		return fmt.Errorf("failed to add Microsoft provider: %w", err)
+	}
 	// Add other providers here as needed
 	return nil
 }
@@ -73,6 +80,54 @@ func addGoogle(c *oauthgobootstrap.Core) error {
 	if err != nil {
 		return err
 	}
+	c.Manager.Providers[p.Name()] = p
+	return nil
+}
+
+func addGitHub(c *oauthgobootstrap.Core) error {
+	clientID := os.Getenv("GITHUB_KEY")
+	secret := os.Getenv("GITHUB_SECRET")
+	if clientID == "" || secret == "" {
+		return fmt.Errorf("GitHub: set GITHUB_KEY and GITHUB_SECRET")
+	}
+
+	input := &coreprov.ProviderInput{
+		StateCodec:      c.StateCodec,
+		ReplayProtector: c.ReplayProtector,
+		HttpClient:      c.HTTPClient,
+		ClientID:        clientID,
+		ClientSecret:    secret,
+	}
+
+	p, err := oauthgogithub.NewWithOptions(input)
+	if err != nil {
+		return err
+	}
+	c.Manager.Providers[p.Name()] = p
+	return nil
+}
+
+func addMicrosoft(c *oauthgobootstrap.Core) error {
+	clientID := os.Getenv("MICROSOFT_KEY")
+	clientSecret := os.Getenv("MICROSOFT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		return fmt.Errorf("Microsoft: set MICROSOFT_KEY and MICROSOFT_SECRET")
+	}
+
+	input := &coreprov.ProviderInput{
+		StateCodec:      c.StateCodec,
+		ReplayProtector: c.ReplayProtector,
+		HttpClient:      c.HTTPClient,
+		ClientID:        clientID,
+		ClientSecret:    clientSecret,
+		// you can also inject Options here to override defaults
+	}
+	p, err := oauthgomicrosoft.NewWithOptions(input)
+
+	if err != nil {
+		return err
+	}
+
 	c.Manager.Providers[p.Name()] = p
 	return nil
 }

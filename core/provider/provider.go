@@ -44,6 +44,5 @@ func (f *AuthFacade) UserInfo(ctx context.Context, accessToken, idToken string) 
 	if f.identityProvider == nil {
 		return &oauthgooidc.User{}, nil
 	}
-	_ = f.identityProvider.VerifyIDToken(ctx, idToken) // ignore if empty
 	return f.identityProvider.UserInfo(ctx, accessToken, idToken)
 }

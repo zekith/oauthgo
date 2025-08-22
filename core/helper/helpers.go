@@ -19,12 +19,13 @@ type baseProviderInput struct {
 	clientID        string
 	clientSecret    string
 
-	name           string
-	scopes         []string
-	authURL        string
-	tokenURL       string
-	revokeTokenURL string
-	usePKCE        bool
+	name                       string
+	scopes                     []string
+	authURL                    string
+	tokenURL                   string
+	revokeTokenURL             string
+	usePKCE                    bool
+	disableIdTokenVerification bool
 }
 
 func BuildProviderFromDefaults(
@@ -100,12 +101,14 @@ func BuildProviderFromDefaults(
 		tokenURL := pointer.GetString(resolveURL(opts.OAuth2, func(o *coreprov.OAuth2Options) *string { return o.TokenURL }, defaultOpts.OAuth2.TokenURL))
 		revURL := pointer.GetString(resolveURL(opts.OAuth2, func(o *coreprov.OAuth2Options) *string { return o.RevocationURL }, defaultOpts.OAuth2.RevocationURL))
 		usePKCE := pointer.GetBool(resolveUsePKCE(opts.OAuth2, func(o *coreprov.OAuth2Options) *bool { return o.UsePKCE }, defaultOpts.OAuth2.UsePKCE))
+		disableIdTokenVerification := pointer.GetBool(resolveDisableIdTokenVerification(opts.OIDC, func(o *coreprov.OIDCOptions) *bool { return o.DisableIdTokenVerification }, defaultOpts.OIDC.DisableIdTokenVerification))
 
 		baseInput.scopes = scopes
 		baseInput.authURL = authURL
 		baseInput.tokenURL = tokenURL
 		baseInput.revokeTokenURL = revURL
 		baseInput.usePKCE = usePKCE
+		baseInput.disableIdTokenVerification = disableIdTokenVerification
 
 		base := createBaseProvider(baseInput)
 
@@ -116,11 +119,12 @@ func BuildProviderFromDefaults(
 		disableDiscovery := pointer.GetBool(resolveDisableDiscovery(opts.OIDC, func(o *coreprov.OIDCOptions) *bool { return o.DisableDiscovery }, defaultOpts.OIDC.DisableDiscovery))
 
 		dec, err := oidccore.NewOIDCDecorator(base, input.HttpClient, oidccore.OIDCConfig{
-			Issuer:           issuer,
-			JWKSURL:          jwksURL,
-			UserInfoURL:      uiURL,
-			DisableDiscovery: disableDiscovery,
-			ClientID:         input.ClientID,
+			Issuer:                     issuer,
+			JWKSURL:                    jwksURL,
+			UserInfoURL:                uiURL,
+			DisableDiscovery:           disableDiscovery,
+			ClientID:                   input.ClientID,
+			DisableIdTokenVerification: baseInput.disableIdTokenVerification,
 		})
 		if err != nil {
 			return nil, err
@@ -170,7 +174,20 @@ func resolveUsePKCE(opts *coreprov.OAuth2Options, getter func(*coreprov.OAuth2Op
 			return usePKCE
 		}
 	}
+	if defaultUsePKCE == nil {
+		// Default to true if not set
+		return pointer.ToBool(true)
+	}
 	return defaultUsePKCE
+}
+
+func resolveDisableIdTokenVerification(opts *coreprov.OIDCOptions, getter func(*coreprov.OIDCOptions) *bool, defaultDisableIdTokenVerification *bool) *bool {
+	if opts != nil {
+		if disableIdTokenVerification := getter(opts); disableIdTokenVerification != nil {
+			return disableIdTokenVerification
+		}
+	}
+	return defaultDisableIdTokenVerification
 }
 
 func resolveName(opts *coreprov.ProviderOptions, getter func(*coreprov.ProviderOptions) string, defaultName string) string {

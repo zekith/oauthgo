@@ -12,7 +12,6 @@ type AuthOptions struct {
 	Scopes      []string
 	Prompt      string
 	LoginHint   string
-	UsePKCE     bool
 	Extras      map[string]string
 }
 

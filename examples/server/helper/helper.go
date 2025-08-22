@@ -2,7 +2,6 @@ package oauthgoexampleshelper
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -56,7 +55,6 @@ func SetupHTTPHandlers(m *oauthgoprovidermanager.ProviderManager, cookieMgr *oau
 	http.HandleFunc(PathAuth, m.LoginHandler(func(r *http.Request) coreprovider.AuthOptions {
 		return coreprovider.AuthOptions{
 			RedirectURL: defaultRedirect(r),
-			UsePKCE:     true,
 			Prompt:      PromptSelectAccount,
 		}
 	}))
@@ -139,11 +137,8 @@ func createLogoutHandler(cookieMgr *oauthgocookie.CookieSessionManager, sessionS
 func createLogoutAndInvokeHandler(m *oauthgoprovidermanager.ProviderManager, cookieMgr *oauthgocookie.CookieSessionManager, sessionStore oauthgostore.SessionStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if sid, err := r.Cookie(env2.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
-			log.Println("Attempting to revoke access token for session ID:", sid.Value)
 			if sd, ok, _ := sessionStore.Get(r.Context(), sid.Value); ok {
-				log.Println("Found session data for ID:", sid.Value)
 				if p, found := m.Providers[sd.Provider]; found && sd.AccessToken != "" {
-					log.Printf("Revoking access token for provider %s: %s", sd.Provider, sd.AccessToken)
 					_ = p.Revoke(r.Context(), sd.AccessToken)
 				}
 				_ = sessionStore.Del(r.Context(), sid.Value)

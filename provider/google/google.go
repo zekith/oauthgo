@@ -11,13 +11,10 @@ var googleDefaults = &coreprov.ProviderOptions{
 	Mode: pointer.To(coreprov.OIDC), // Google strongly recommends OIDC
 
 	OAuth2: &coreprov.OAuth2Options{
-		AuthURL:          pointer.ToString("https://accounts.google.com/o/oauth2/v2/auth"),
-		TokenURL:         pointer.ToString("https://oauth2.googleapis.com/token"),
-		RevocationURL:    pointer.ToString("https://oauth2.googleapis.com/revoke"),
-		PKCEAuthURL:      pointer.ToString("https://accounts.google.com/o/oauth2/v2/auth"), // Google uses the same auth URL for PKCE
-		Scopes:           pointer.To([]string{"email"}),                                    // Applicable for OAuth2-only mode will be overridden by OIDC scopes if OIDC is enabled
-		PKCEPublicClient: pointer.To(false),                                                // Google does not support public clients with PKCE
-		UsePKCE:          pointer.ToBool(true),                                             // Google strongly recommends PKCE
+		AuthURL:       pointer.ToString("https://accounts.google.com/o/oauth2/v2/auth"),
+		TokenURL:      pointer.ToString("https://oauth2.googleapis.com/token"),
+		RevocationURL: pointer.ToString("https://oauth2.googleapis.com/revoke"),
+		Scopes:        pointer.To([]string{"email"}), // Applicable for OAuth2-only mode will be overridden by OIDC scopes if OIDC is enabled
 	},
 
 	OIDC: &coreprov.OIDCOptions{

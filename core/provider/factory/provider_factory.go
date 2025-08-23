@@ -29,18 +29,18 @@ type OAuthProviderConfig struct {
 	skipIDTokenVerification bool
 }
 
-// NewOAuthOIDCProvider constructs a provider (OAuth2 or OIDC) based on input + defaults.
+// NewOAuthOIDCProvider constructs a provider (OAuth2 or OIDC) based on provider config + defaults.
 func NewOAuthOIDCProvider(
-	input *oauthgotypes.ProviderConfig,
+	providerConfig *oauthgotypes.ProviderConfig,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) (coreprov.OAuthO2IDCProvider, error) {
 
-	opts := input.OAuth2ODICOptions
+	opts := providerConfig.OAuth2ODICOptions
 	if opts == nil {
 		opts = defaultOpts
 	}
 
-	config := newOAuthProviderConfig(input, opts, defaultOpts)
+	config := newOAuthProviderConfig(providerConfig, opts, defaultOpts)
 	mode := pointer.Get(resolveMode(opts, func(o *oauthgotypes.OAuth2OIDCOptions) *oauthgotypes.Mode { return o.Mode }, defaultOpts.Mode))
 
 	switch mode {
@@ -54,17 +54,17 @@ func NewOAuthOIDCProvider(
 }
 
 func newOAuthProviderConfig(
-	input *oauthgotypes.ProviderConfig,
+	providerConfig *oauthgotypes.ProviderConfig,
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) *OAuthProviderConfig {
 
 	return &OAuthProviderConfig{
-		stateCodec:      input.StateCodec,
-		replayProtector: input.ReplayProtector,
-		httpClient:      input.HttpClient,
-		clientID:        input.ClientID,
-		clientSecret:    input.ClientSecret,
+		stateCodec:      providerConfig.StateCodec,
+		replayProtector: providerConfig.ReplayProtector,
+		httpClient:      providerConfig.HttpClient,
+		clientID:        providerConfig.ClientID,
+		clientSecret:    providerConfig.ClientSecret,
 		name:            resolveName(opts, func(o *oauthgotypes.OAuth2OIDCOptions) string { return pointer.GetString(o.Name) }, pointer.GetString(defaultOpts.Name)),
 		authURL:         pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.AuthURL }, defaultOpts.OAuth2.AuthURL)),
 		tokenURL:        pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.TokenURL }, defaultOpts.OAuth2.TokenURL)),

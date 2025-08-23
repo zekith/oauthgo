@@ -27,6 +27,6 @@ var microsoftDefaults = &oauthgotypes.OAuth2OIDCOptions{
 	},
 }
 
-func NewWithOptions(input *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
-	return oauthgofactory.NewOAuthOIDCProvider(input, microsoftDefaults)
+func NewWithOptions(providerConfig *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
+	return oauthgofactory.NewOAuthOIDCProvider(providerConfig, microsoftDefaults)
 }

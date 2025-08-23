@@ -17,10 +17,15 @@ import (
 func main() {
 	handler := oauthgo.HandlerFacade{}
 
-	// Initialize the core components of the OAuth server
+	// Initialize the core components of the OAuth server provided by the library
+	// You can also use your own core components if you want to customize the behavior of the server
+	// e.g. you can use a different replay protector, session store, cookie manager, http client, etc.
+	// it is recommended to use redis for replay protector and session store so that the server can be scaled horizontally
 	core := oauthgobootstrap.BuildCore()
 
 	// Configure OAuth providers here
+	// We have a helper function for setting up the providers, it is just a helper function for the demo, it is not part of the core library.
+	// You can use your own provider implementation if you want to customize the behavior of the provider.
 
 	if err := setupOAuthProvider(handler, "google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", core, handler.AutoCallbackOIDC); err != nil {
 		log.Fatal(err)

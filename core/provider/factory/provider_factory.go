@@ -40,7 +40,7 @@ func NewOAuth2OIDCProvider(
 		opts = defaultOpts
 	}
 
-	config := newOAuthProviderConfig(providerConfig, opts, defaultOpts)
+	config := newOAuth2OIDCProviderConfig(providerConfig, opts, defaultOpts)
 	mode := pointer.Get(resolveMode(opts, func(o *oauthgotypes.OAuth2OIDCOptions) *oauthgotypes.Mode { return o.Mode }, defaultOpts.Mode))
 
 	switch mode {
@@ -53,7 +53,7 @@ func NewOAuth2OIDCProvider(
 	}
 }
 
-func newOAuthProviderConfig(
+func newOAuth2OIDCProviderConfig(
 	providerConfig *oauthgotypes.ProviderConfig,
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,

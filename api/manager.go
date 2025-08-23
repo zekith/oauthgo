@@ -25,20 +25,25 @@ const (
 	HTMLLoggedOutRev = "<p>Logged out <a href='/'>Home</a></p>"
 )
 
+// ProviderManager is the main entry point for the OIDC provider.
 type ProviderManager struct {
 	providers map[string]oauth2oidc.OAuthO2IDCProvider
 }
 
+// NewProviderManager creates a new ProviderManager.
 func NewProviderManager() *ProviderManager {
 	return &ProviderManager{
 		providers: map[string]oauth2oidc.OAuthO2IDCProvider{},
 	}
 }
 
+// Register registers a provider.
 func (m *ProviderManager) Register(name string, provider oauth2oidc.OAuthO2IDCProvider) {
+	fmt.Println("Registering provider: " + name)
 	m.providers[name] = provider
 }
 
+// AuthURL returns the URL to redirect the user to for authentication.
 func (m *ProviderManager) AuthURL(
 	providerName string,
 	r *http.Request,
@@ -52,6 +57,7 @@ func (m *ProviderManager) AuthURL(
 	return provider.AuthURL(r.Context(), r, opts)
 }
 
+// Callback handles the callback after the user logs in.
 func (m *ProviderManager) Callback(
 	providerName string,
 	w http.ResponseWriter,
@@ -90,79 +96,8 @@ func (m *ProviderManager) Callback(
 	}, nil
 }
 
-func (m *ProviderManager) validateProvider(providerName string) (oauth2oidc.OAuthO2IDCProvider, error) {
-	provider, ok := m.providers[providerName]
-	if !ok {
-		return nil, errors.New("provider not registered: " + providerName)
-	}
-	return provider, nil
-}
-
-func (m *ProviderManager) exchangeCodeForToken(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider) (*SessionData, error) {
-	code := r.FormValue("code")
-	state := r.FormValue("state")
-	return provider.Exchange(r.Context(), r, code, state)
-}
-
-func (m *ProviderManager) fetchUserInfo(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider, session *SessionData) (*oauthgooidc.User, error) {
-	return provider.UserInfo(r.Context(), session.AccessToken, session.IDToken)
-}
-
-func (m *ProviderManager) handleSessionStorage(r *http.Request, w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) (string, error) {
-	if !opts.StoreSession || opts.SessionStore == nil {
-		return "", nil
-	}
-
-	sid := oauthgoutils.MustRandom(24)
-	sessionData := oauthgostore.SessionData{
-		Provider:     session.Provider,
-		Subject:      user.Subject,
-		Email:        user.Email,
-		Name:         user.Name,
-		AccessToken:  session.AccessToken,
-		RefreshToken: session.RefreshToken,
-		Expiry:       session.Expiry,
-		CreatedAt:    time.Now(),
-	}
-
-	if err := opts.SessionStore.Put(r.Context(), sid, sessionData, 24*time.Hour); err != nil {
-		return "", err
-	}
-
-	if opts.SetSIDCookie {
-		m.setSIDCookie(w, sid)
-	}
-
-	return sid, nil
-}
-
-func (m *ProviderManager) setSIDCookie(w http.ResponseWriter, sid string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "oauthgo_sid",
-		Value:    sid,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-}
-
-func (m *ProviderManager) handleCookieStorage(w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) error {
-	if !opts.SetLoginCookie || opts.CookieManager == nil {
-		return nil
-	}
-
-	cookieSession := oauthgocookie.CookieSession{
-		Provider: session.Provider,
-		Subject:  user.Subject,
-		Email:    user.Email,
-		Name:     user.Name,
-		Expiry:   time.Now().Add(opts.CookieManager.TTL),
-	}
-
-	return opts.CookieManager.Set(w, cookieSession)
-}
-
-func (m *ProviderManager) Me(
+// LoggedInUser returns the user if the user is logged in.
+func (m *ProviderManager) LoggedInUser(
 	w http.ResponseWriter,
 	r *http.Request,
 	cookieMgr *oauthgocookie.CookieSessionManager,
@@ -189,6 +124,7 @@ func (m *ProviderManager) Me(
 
 }
 
+// Logout logs out the user.
 func (m *ProviderManager) Logout(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -218,4 +154,82 @@ func (m *ProviderManager) Logout(
 		panic(err)
 		return
 	}
+}
+
+// validateProvider validates the provider.
+func (m *ProviderManager) validateProvider(providerName string) (oauth2oidc.OAuthO2IDCProvider, error) {
+	provider, ok := m.providers[providerName]
+	if !ok {
+		return nil, errors.New("provider not registered: " + providerName)
+	}
+	return provider, nil
+}
+
+// exchangeCodeForToken exchanges the code for a token.
+func (m *ProviderManager) exchangeCodeForToken(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider) (*SessionData, error) {
+	code := r.FormValue("code")
+	state := r.FormValue("state")
+	return provider.Exchange(r.Context(), r, code, state)
+}
+
+// fetchUserInfo fetches the user info.
+func (m *ProviderManager) fetchUserInfo(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider, session *SessionData) (*oauthgooidc.User, error) {
+	return provider.UserInfo(r.Context(), session.AccessToken, session.IDToken)
+}
+
+// handleSessionStorage handles the session storage.
+func (m *ProviderManager) handleSessionStorage(r *http.Request, w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) (string, error) {
+	if !opts.StoreSession || opts.SessionStore == nil {
+		return "", nil
+	}
+
+	sid := oauthgoutils.MustRandom(24)
+	sessionData := oauthgostore.SessionData{
+		Provider:     session.Provider,
+		Subject:      user.Subject,
+		Email:        user.Email,
+		Name:         user.Name,
+		AccessToken:  session.AccessToken,
+		RefreshToken: session.RefreshToken,
+		Expiry:       session.Expiry,
+		CreatedAt:    time.Now(),
+	}
+
+	if err := opts.SessionStore.Put(r.Context(), sid, sessionData, 24*time.Hour); err != nil {
+		return "", err
+	}
+
+	if opts.SetSIDCookie {
+		m.setSIDCookie(w, sid)
+	}
+
+	return sid, nil
+}
+
+// setSIDCookie sets the SID cookie.
+func (m *ProviderManager) setSIDCookie(w http.ResponseWriter, sid string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     DefaultSIDCookie,
+		Value:    sid,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// handleCookieStorage handles the cookie storage.
+func (m *ProviderManager) handleCookieStorage(w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) error {
+	if !opts.SetLoginCookie || opts.CookieManager == nil {
+		return nil
+	}
+
+	cookieSession := oauthgocookie.CookieSession{
+		Provider: session.Provider,
+		Subject:  user.Subject,
+		Email:    user.Email,
+		Name:     user.Name,
+		Expiry:   time.Now().Add(opts.CookieManager.TTL),
+	}
+
+	return opts.CookieManager.Set(w, cookieSession)
 }

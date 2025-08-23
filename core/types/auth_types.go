@@ -44,8 +44,8 @@ type OAuth2OIDCOptions struct {
 	OIDC   *OIDCOptions   // optional
 }
 
-// ProviderInput is the input for the provider.
-type ProviderInput struct {
+// ProviderConfig is the config for the provider.
+type ProviderConfig struct {
 	StateCodec        *oauthgostate.StateCodec
 	ReplayProtector   oauthgoreplay.ReplayProtector
 	HttpClient        *http.Client

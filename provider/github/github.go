@@ -21,6 +21,6 @@ var githubDefaults = &oauthgotypes.OAuth2OIDCOptions{
 
 }
 
-func NewWithOptions(input *oauthgotypes.ProviderInput) (coreprov.OAuthO2IDCProvider, error) {
+func NewWithOptions(input *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
 	return oauthgofactory.NewOAuthOIDCProvider(input, githubDefaults)
 }

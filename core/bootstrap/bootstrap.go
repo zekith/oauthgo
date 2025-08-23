@@ -13,7 +13,6 @@ import (
 	"github.com/zekith/oauthgo/core/replay"
 	"github.com/zekith/oauthgo/core/state"
 	"github.com/zekith/oauthgo/core/store"
-	"github.com/zekith/oauthgo/provider"
 )
 
 // -----------------------------------------------------------------------------
@@ -52,7 +51,6 @@ type Core struct {
 	ReplayProtector oauthgoreplay.ReplayProtector
 	SessionStore    oauthgostore.SessionStore
 	CookieMgr       *oauthgocookie.CookieSessionManager
-	Manager         *oauthgoprovidermanager.ProviderManager
 }
 
 func BuildCore() *Core {
@@ -62,7 +60,6 @@ func BuildCore() *Core {
 		ReplayProtector: ReplayProtector(),
 		SessionStore:    SessionStore(),
 		CookieMgr:       CookieManager(),
-		Manager:         oauthgoprovidermanager.NewProviderManager(),
 	}
 }
 

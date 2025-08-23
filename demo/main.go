@@ -15,20 +15,24 @@ import (
 )
 
 func main() {
+	handler := oauthgo.HandlerFacade{}
+
 	// Initialize the core components of the OAuth server
 	core := oauthgobootstrap.BuildCore()
 
-	if err := setupOAuthProvider("google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", core, oauthgo.AutoCallbackOIDC); err != nil {
+	// Configure OAuth providers here
+
+	if err := setupOAuthProvider(handler, "google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", core, handler.AutoCallbackOIDC); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := setupOAuthProvider("github", oauthgogithub.NewWithOptions, "GITHUB_KEY", "GITHUB_SECRET", core, oauthgo.AutoCallbackOAuth2); err != nil {
+	if err := setupOAuthProvider(handler, "github", oauthgogithub.NewWithOptions, "GITHUB_KEY", "GITHUB_SECRET", core, handler.AutoCallbackOAuth2); err != nil {
 		log.Fatal(err)
 	}
 
 	// Optional prebuilt handlers
-	http.HandleFunc("/me", oauthgo.MeHandler("", core))
-	http.HandleFunc("/logout", oauthgo.LogoutHandler("", core))
+	http.HandleFunc("/me", handler.LoggedInUser(core))
+	http.HandleFunc("/logout", handler.Logout(core))
 
 	// Start HTTP server
 	addr := ":3000"
@@ -39,19 +43,25 @@ func main() {
 // setupOAuthProvider extracts the common pattern for configuring OAuth providers
 // it is just a helper function for the demo, it is not part of the core library.
 func setupOAuthProvider(
-	providerName string,
-	newProviderFunc func(*coreprov.ProviderInput) (oauth2oidc.OAuthO2IDCProvider, error),
+	handler oauthgo.HandlerFacade,
+	provider string,
+	newProviderFunc func(*coreprov.ProviderConfig) (oauth2oidc.OAuthO2IDCProvider, error),
 	clientIDEnv, clientSecretEnv string,
 	core *oauthgobootstrap.Core,
 	callbackFunc func(string, *oauthgobootstrap.Core) http.HandlerFunc,
 ) error {
+
+	// Get the client ID and secret from environment variables
 	clientID := os.Getenv(clientIDEnv)
 	clientSecret := os.Getenv(clientSecretEnv)
+
+	// Check if the client ID and secret are set
 	if clientID == "" || clientSecret == "" {
-		return fmt.Errorf("%s: environment variables %s and %s must be set", providerName, clientIDEnv, clientSecretEnv)
+		return fmt.Errorf("%s: environment variables %s and %s must be set", provider, clientIDEnv, clientSecretEnv)
 	}
 
-	provider, err := newProviderFunc(&coreprov.ProviderInput{
+	// Create a new provider function from the provider config
+	providerFunc, err := newProviderFunc(&coreprov.ProviderConfig{
 		StateCodec:      core.StateCodec,
 		ReplayProtector: core.ReplayProtector,
 		HttpClient:      core.HTTPClient,
@@ -59,12 +69,16 @@ func setupOAuthProvider(
 		ClientSecret:    clientSecret,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create %s provider: %w", providerName, err)
+		return fmt.Errorf("failed to create %s provider: %w", provider, err)
 	}
 
-	oauthgo.Register(providerName, provider)
-	http.HandleFunc("/auth/"+providerName, oauthgo.AutoLogin(providerName))
-	http.HandleFunc("/callback/"+providerName, callbackFunc(providerName, core))
+	// Register the provider
+	handler.Register(provider, providerFunc)
+
+	// Register the login and callback handlers for the provider
+
+	http.HandleFunc("/auth/"+provider, handler.AutoLogin(provider))
+	http.HandleFunc("/callback/"+provider, callbackFunc(provider, core))
 
 	return nil
 }

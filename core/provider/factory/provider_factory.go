@@ -31,7 +31,7 @@ type OAuthProviderConfig struct {
 
 // NewOAuthOIDCProvider constructs a provider (OAuth2 or OIDC) based on input + defaults.
 func NewOAuthOIDCProvider(
-	input *oauthgotypes.ProviderInput,
+	input *oauthgotypes.ProviderConfig,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) (coreprov.OAuthO2IDCProvider, error) {
 
@@ -54,7 +54,7 @@ func NewOAuthOIDCProvider(
 }
 
 func newOAuthProviderConfig(
-	input *oauthgotypes.ProviderInput,
+	input *oauthgotypes.ProviderConfig,
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) *OAuthProviderConfig {

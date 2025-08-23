@@ -27,6 +27,10 @@ func main() {
 	// We have a helper function for setting up the providers, it is just a helper function for the demo, it is not part of the core library.
 	// You can use your own provider implementation if you want to customize the behavior of the provider.
 
+	//TODO, need to handle session store and cookie manager consistently as callback
+	// is taking these as parameters and not using the core.
+	// LoggedInUser and Logout are using the core.
+
 	if err := setupOAuthProvider(handler, "google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", core, handler.AutoCallbackOIDC); err != nil {
 		log.Fatal(err)
 	}

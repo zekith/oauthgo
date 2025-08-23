@@ -121,7 +121,6 @@ func (d *OIDCDecorator) UserInfo(ctx context.Context, accessToken, idToken strin
 
 // userInfoFromIDToken retrieves user information by verifying and parsing the ID token.
 func (d *OIDCDecorator) userInfoFromIDToken(ctx context.Context, idToken string) (*User, error) {
-	log.Println("Using ID Token to retrieve user info")
 
 	parsed, err := d.verifier.Verify(ctx, idToken)
 	if err != nil {

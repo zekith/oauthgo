@@ -109,8 +109,6 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 		o.Scopes = append([]string{}, opts.Scopes...)
 	}
 
-	fmt.Println("Scopes requested:", o.Scopes)
-
 	statePayload, err := p.createStatePayload(opts)
 	if err != nil {
 		return "", "", err

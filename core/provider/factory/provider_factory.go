@@ -13,8 +13,8 @@ import (
 	"github.com/zekith/oauthgo/core/types"
 )
 
-// OAuthProviderConfig contains required fields to configure an OAuth2 or OIDC provider.
-type OAuthProviderConfig struct {
+// oAuth2OIDCProviderConfig contains required fields to configure an OAuth2 or OIDC provider.
+type oAuth2OIDCProviderConfig struct {
 	stateCodec              *oauthgostate.StateCodec
 	replayProtector         oauthgoreplay.ReplayProtector
 	httpClient              *http.Client
@@ -29,8 +29,8 @@ type OAuthProviderConfig struct {
 	skipIDTokenVerification bool
 }
 
-// NewOAuthOIDCProvider constructs a provider (OAuth2 or OIDC) based on provider config + defaults.
-func NewOAuthOIDCProvider(
+// NewOAuth2OIDCProvider constructs a provider (OAuth2 or OIDC) based on provider config + defaults.
+func NewOAuth2OIDCProvider(
 	providerConfig *oauthgotypes.ProviderConfig,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) (coreprov.OAuthO2IDCProvider, error) {
@@ -57,9 +57,9 @@ func newOAuthProviderConfig(
 	providerConfig *oauthgotypes.ProviderConfig,
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
-) *OAuthProviderConfig {
+) *oAuth2OIDCProviderConfig {
 
-	return &OAuthProviderConfig{
+	return &oAuth2OIDCProviderConfig{
 		stateCodec:      providerConfig.StateCodec,
 		replayProtector: providerConfig.ReplayProtector,
 		httpClient:      providerConfig.HttpClient,
@@ -74,7 +74,7 @@ func newOAuthProviderConfig(
 }
 
 func buildOAuth2Provider(
-	config *OAuthProviderConfig,
+	config *oAuth2OIDCProviderConfig,
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) (coreprov.OAuthO2IDCProvider, error) {
@@ -85,7 +85,7 @@ func buildOAuth2Provider(
 }
 
 func buildOIDCProvider(
-	config *OAuthProviderConfig,
+	config *oAuth2OIDCProviderConfig,
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) (coreprov.OAuthO2IDCProvider, error) {
@@ -103,7 +103,7 @@ func buildOIDCProvider(
 	return coreprov.NewOAuth2OIDCFacade(provider, oidcDecorator), nil
 }
 
-func newOAuth2Provider(config *OAuthProviderConfig) oauthgoauth2.OAuth2Provider {
+func newOAuth2Provider(config *oAuth2OIDCProviderConfig) oauthgoauth2.OAuth2Provider {
 	return oauthgoauth2.NewStandardOAuth2Provider(config.name, oauthgoauth2.OAuth2Config{
 		ClientID:      config.clientID,
 		ClientSecret:  config.clientSecret,
@@ -116,7 +116,7 @@ func newOAuth2Provider(config *OAuthProviderConfig) oauthgoauth2.OAuth2Provider 
 }
 
 func newOIDCDecorator(
-	config *OAuthProviderConfig,
+	config *oAuth2OIDCProviderConfig,
 	auth oauthgoauth2.OAuth2Provider,
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,

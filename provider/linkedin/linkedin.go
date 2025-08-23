@@ -29,5 +29,5 @@ var linkedInDefaults = &oauthgotypes.OAuth2OIDCOptions{
 }
 
 func NewWithOptions(providerConfig *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
-	return oauthgofactory.NewOAuthOIDCProvider(providerConfig, linkedInDefaults)
+	return oauthgofactory.NewOAuth2OIDCProvider(providerConfig, linkedInDefaults)
 }

@@ -25,5 +25,5 @@ var googleDefaults = &oauthgotypes.OAuth2OIDCOptions{
 }
 
 func NewWithOptions(providerConfig *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
-	return oauthgofactory.NewOAuthOIDCProvider(providerConfig, googleDefaults)
+	return oauthgofactory.NewOAuth2OIDCProvider(providerConfig, googleDefaults)
 }

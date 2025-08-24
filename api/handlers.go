@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	oauthgobootstrap "github.com/zekith/oauthgo/core/bootstrap"
 	"github.com/zekith/oauthgo/core/provider/oauth2oidc"
 )
 
@@ -15,16 +14,16 @@ var providerManager = NewProviderManager()
 type HandlerFacade struct{}
 
 // LoggedInUser returns a handler that returns the logged-in user.
-func (h *HandlerFacade) LoggedInUser(core *oauthgobootstrap.Core) http.HandlerFunc {
+func (h *HandlerFacade) LoggedInUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		providerManager.LoggedInUser(w, r, core.CookieMgr, core.SessionStore)
+		providerManager.LoggedInUser(w, r)
 	}
 }
 
 // Logout returns a handler that logs out the user.
-func (h *HandlerFacade) Logout(core *oauthgobootstrap.Core) http.HandlerFunc {
+func (h *HandlerFacade) Logout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		providerManager.Logout(w, r, core.CookieMgr, core.SessionStore)
+		providerManager.Logout(w, r)
 	}
 }
 
@@ -77,11 +76,9 @@ func (h *HandlerFacade) AutoLogin(provider string) http.HandlerFunc {
 
 // AutoCallbackOIDC returns a handler that handles the callback for OIDC.
 // This is useful for demos and testing multiple providers.
-func (h *HandlerFacade) AutoCallbackOIDC(provider string, core *oauthgobootstrap.Core) http.HandlerFunc {
+func (h *HandlerFacade) AutoCallbackOIDC(provider string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.Callback(provider, CallbackOptions{
-			CookieManager:  core.CookieMgr,
-			SessionStore:   core.SessionStore,
 			SetLoginCookie: true,
 			SetSIDCookie:   true,
 			StoreSession:   true,
@@ -94,7 +91,7 @@ func (h *HandlerFacade) AutoCallbackOIDC(provider string, core *oauthgobootstrap
 
 // AutoCallbackOAuth2 returns a handler that handles the callback for OAuth2.
 // This is useful for demos and testing multiple providers.
-func (h *HandlerFacade) AutoCallbackOAuth2(provider string, _ *oauthgobootstrap.Core) http.HandlerFunc {
+func (h *HandlerFacade) AutoCallbackOAuth2(provider string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.Callback(provider, CallbackOptions{
 			OnSuccess: func(w http.ResponseWriter, r *http.Request, res *CallbackResult) {

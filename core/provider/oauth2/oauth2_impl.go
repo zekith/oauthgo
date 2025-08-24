@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
+	authogodeps "github.com/zekith/oauthgo/core/deps"
 	oauthgostate "github.com/zekith/oauthgo/core/state"
 	oauthgoutils "github.com/zekith/oauthgo/core/utils"
 	"golang.org/x/oauth2"
@@ -33,9 +33,6 @@ type OAuth2Config struct {
 type StandardOAuth2Provider struct {
 	name           string
 	cfg            OAuth2Config
-	httpClient     *http.Client
-	stateCodec     *oauthgostate.StateCodec
-	replay         oauthgoreplay.ReplayProtector
 	templateConfig *oauth2.Config // template; clone per request
 }
 
@@ -43,30 +40,16 @@ type StandardOAuth2Provider struct {
 func NewStandardOAuth2Provider(
 	name string,
 	cfg OAuth2Config,
-	st *oauthgostate.StateCodec,
-	rp oauthgoreplay.ReplayProtector,
-	hc *http.Client) *StandardOAuth2Provider {
+) *StandardOAuth2Provider {
 
-	httpClient := getHTTPClientWithDefault(hc)
 	scopes := getScopesWithDefaults(cfg.Scopes)
 	oauth2Config := createOAuth2Config(cfg, scopes)
 
 	return &StandardOAuth2Provider{
 		name:           name,
 		cfg:            cfg,
-		httpClient:     httpClient,
-		stateCodec:     st,
-		replay:         rp,
 		templateConfig: oauth2Config,
 	}
-}
-
-// getHTTPClientWithDefault returns the default http client if hc is nil.
-func getHTTPClientWithDefault(hc *http.Client) *http.Client {
-	if hc == nil {
-		return http.DefaultClient
-	}
-	return hc
 }
 
 // getScopesWithDefaults returns the default scopes if scopes is nil.
@@ -114,7 +97,7 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 		return "", "", err
 	}
 
-	opaque, err := p.stateCodec.Encode(statePayload)
+	opaque, err := oauthgostate.GetStateCodec().Encode(statePayload)
 	if err != nil {
 		return "", "", err
 	}
@@ -210,7 +193,7 @@ func (p *StandardOAuth2Provider) Exchange(ctx context.Context, r *http.Request, 
 
 // validateAndDecodeState validates and decodes the state.
 func (p *StandardOAuth2Provider) validateAndDecodeState(opaque string) (*oauthgostate.StatePayload, error) {
-	sp, err := p.stateCodec.Decode(opaque)
+	sp, err := oauthgostate.GetStateCodec().Decode(opaque)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode state: %w", err)
 	}
@@ -219,11 +202,11 @@ func (p *StandardOAuth2Provider) validateAndDecodeState(opaque string) (*oauthgo
 
 // checkReplayProtection checks the replay protection.
 func (p *StandardOAuth2Provider) checkReplayProtection(ctx context.Context, opaque string) error {
-	if p.replay == nil {
+	if authogodeps.Get() == nil {
 		return nil
 	}
 
-	isFirstSeen, err := p.replay.FirstSeen(ctx, opaque, p.stateCodec.TTL)
+	isFirstSeen, err := authogodeps.Get().ReplayProtector.FirstSeen(ctx, opaque, oauthgostate.GetStateCodec().TTL)
 	if err != nil {
 		return fmt.Errorf("replay protection check failed: %w", err)
 	}
@@ -313,7 +296,7 @@ func (p *StandardOAuth2Provider) Revoke(ctx context.Context, token string) error
 		return err
 	}
 
-	res, err := p.httpClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ type MemoryReplayProtector struct {
 }
 
 // NewMemoryReplayProtector creates a new MemoryReplayProtector.
-func NewMemoryReplayProtector() *MemoryReplayProtector {
+func NewMemoryReplayProtector() ReplayProtector {
 	return &MemoryReplayProtector{seen: make(map[string]int64)}
 }
 

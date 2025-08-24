@@ -7,7 +7,7 @@ import (
 	"time"
 
 	oauthgocookie "github.com/zekith/oauthgo/core/cookie"
-	env2 "github.com/zekith/oauthgo/core/env"
+	authogodeps "github.com/zekith/oauthgo/core/deps"
 	"github.com/zekith/oauthgo/core/provider/oauth2oidc"
 	oauthgooidc "github.com/zekith/oauthgo/core/provider/oidc"
 	oauthgostore "github.com/zekith/oauthgo/core/store"
@@ -100,17 +100,16 @@ func (m *ProviderManager) Callback(
 func (m *ProviderManager) LoggedInUser(
 	w http.ResponseWriter,
 	r *http.Request,
-	cookieMgr *oauthgocookie.CookieSessionManager,
-	sessionStore oauthgostore.SessionStore) {
+) {
 
-	if s, ok := cookieMgr.Parse(r); ok {
+	if s, ok := authogodeps.Get().SessionCookieManager.Parse(r); ok {
 		w.Header().Set("Content-Type", ContentTypeHTML)
 		_, err := w.Write([]byte(fmt.Sprintf(HTMLSignedIn, *s)))
 		if err != nil {
 			return
 		}
-		if sid, err := r.Cookie(env2.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
-			if sd, ok, _ := sessionStore.Get(r.Context(), sid.Value); ok {
+		if sid, err := r.Cookie(oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
+			if sd, ok, _ := authogodeps.Get().SessionStore.Get(r.Context(), sid.Value); ok {
 				_, err := w.Write([]byte(fmt.Sprintf(HTMLServerSess, sd)))
 				if err != nil {
 					panic(err)
@@ -128,18 +127,16 @@ func (m *ProviderManager) LoggedInUser(
 func (m *ProviderManager) Logout(
 	w http.ResponseWriter,
 	r *http.Request,
-	cookieMgr *oauthgocookie.CookieSessionManager,
-	sessionStore oauthgostore.SessionStore,
 ) {
-	if sid, err := r.Cookie(env2.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
-		if sd, ok, _ := sessionStore.Get(r.Context(), sid.Value); ok {
+	if sid, err := r.Cookie(oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
+		if sd, ok, _ := authogodeps.Get().SessionStore.Get(r.Context(), sid.Value); ok {
 			if p, found := m.providers[sd.Provider]; found && sd.AccessToken != "" {
 				_ = p.Revoke(r.Context(), sd.AccessToken)
 			}
-			_ = sessionStore.Del(r.Context(), sid.Value)
+			_ = authogodeps.Get().SessionStore.Del(r.Context(), sid.Value)
 		}
 		http.SetCookie(w, &http.Cookie{
-			Name:     env2.Get(EnvSIDCookie, DefaultSIDCookie),
+			Name:     oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie),
 			Value:    "",
 			Path:     PathRoot,
 			HttpOnly: true,
@@ -147,7 +144,7 @@ func (m *ProviderManager) Logout(
 			MaxAge:   -1,
 		})
 	}
-	cookieMgr.Clear(w)
+	authogodeps.Get().SessionCookieManager.Clear(w)
 	w.Header().Set("Content-Type", ContentTypeHTML)
 	_, err := w.Write([]byte(HTMLLoggedOutRev))
 	if err != nil {
@@ -179,7 +176,7 @@ func (m *ProviderManager) fetchUserInfo(r *http.Request, provider oauth2oidc.OAu
 
 // handleSessionStorage handles the session storage.
 func (m *ProviderManager) handleSessionStorage(r *http.Request, w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) (string, error) {
-	if !opts.StoreSession || opts.SessionStore == nil {
+	if !opts.StoreSession || authogodeps.Get().SessionStore == nil {
 		return "", nil
 	}
 
@@ -195,7 +192,7 @@ func (m *ProviderManager) handleSessionStorage(r *http.Request, w http.ResponseW
 		CreatedAt:    time.Now(),
 	}
 
-	if err := opts.SessionStore.Put(r.Context(), sid, sessionData, 24*time.Hour); err != nil {
+	if err := authogodeps.Get().SessionStore.Put(r.Context(), sid, sessionData, 24*time.Hour); err != nil {
 		return "", err
 	}
 
@@ -219,17 +216,17 @@ func (m *ProviderManager) setSIDCookie(w http.ResponseWriter, sid string) {
 
 // handleCookieStorage handles the cookie storage.
 func (m *ProviderManager) handleCookieStorage(w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) error {
-	if !opts.SetLoginCookie || opts.CookieManager == nil {
+	if !opts.SetLoginCookie || authogodeps.Get().SessionCookieManager == nil {
 		return nil
 	}
 
-	cookieSession := oauthgocookie.CookieSession{
+	cookieSession := oauthgocookie.SessionCookiePayload{
 		Provider: session.Provider,
 		Subject:  user.Subject,
 		Email:    user.Email,
 		Name:     user.Name,
-		Expiry:   time.Now().Add(opts.CookieManager.TTL),
+		Expiry:   time.Now().Add(authogodeps.Get().SessionCookieManager.Expiry()),
 	}
 
-	return opts.CookieManager.Set(w, cookieSession)
+	return authogodeps.Get().SessionCookieManager.Set(w, cookieSession)
 }

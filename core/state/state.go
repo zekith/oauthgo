@@ -13,7 +13,10 @@ import (
 )
 
 const (
-	minStateLength = sha256.Size
+	minStateLength   = sha256.Size
+	EnvStateHMAC     = "STATE_HMAC"
+	StateCodecTTL    = 2 * time.Minute
+	DefaultStateHMAC = "91df202ecc9b45b8b0209e60891098b5"
 )
 
 // StatePayload is the payload of a state token.
@@ -41,6 +44,11 @@ type StateCodec struct {
 	TTL        time.Duration
 }
 
+func GetStateCodec() *StateCodec {
+	secret := oauthgoutils.Get(EnvStateHMAC, DefaultStateHMAC)
+	return &StateCodec{HMACSecret: []byte(secret), TTL: StateCodecTTL}
+}
+
 // Encode encodes a state payload with HMAC signing and base64 encoding.
 func (c *StateCodec) Encode(sp StatePayload) (string, error) {
 	// marshal the payload
@@ -54,14 +62,6 @@ func (c *StateCodec) Encode(sp StatePayload) (string, error) {
 
 	// encode the token
 	return base64.RawURLEncoding.EncodeToString(token), nil
-}
-
-// signPayload signs the raw payload with HMAC and appends the signature.
-func (c *StateCodec) signPayload(raw []byte) []byte {
-	m := hmac.New(sha256.New, c.HMACSecret)
-	m.Write(raw)
-	sig := m.Sum(nil)
-	return append(raw, sig...)
 }
 
 // Decode decodes a state payload from a base64 encoded string.
@@ -90,6 +90,14 @@ func (c *StateCodec) Decode(s string) (StatePayload, error) {
 	}
 
 	return sp, nil
+}
+
+// signPayload signs the raw payload with HMAC and appends the signature.
+func (c *StateCodec) signPayload(raw []byte) []byte {
+	m := hmac.New(sha256.New, c.HMACSecret)
+	m.Write(raw)
+	sig := m.Sum(nil)
+	return append(raw, sig...)
 }
 
 // decodeBase64 decodes a base64 encoded string.

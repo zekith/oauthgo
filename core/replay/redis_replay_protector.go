@@ -14,7 +14,7 @@ type RedisReplayProtector struct {
 }
 
 // NewRedisReplayProtector creates a new RedisReplayProtector.
-func NewRedisReplayProtector(client *redis.Client, prefix string) *RedisReplayProtector {
+func NewRedisReplayProtector(client *redis.Client, prefix string) ReplayProtector {
 	return &RedisReplayProtector{Client: client, Prefix: prefix}
 }
 

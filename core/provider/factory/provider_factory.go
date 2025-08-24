@@ -2,22 +2,16 @@ package oauthgofactory
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/AlekSi/pointer"
 	oauthgoauth2 "github.com/zekith/oauthgo/core/provider/oauth2"
 	coreprov "github.com/zekith/oauthgo/core/provider/oauth2oidc"
 	oidccore "github.com/zekith/oauthgo/core/provider/oidc"
-	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
-	oauthgostate "github.com/zekith/oauthgo/core/state"
 	"github.com/zekith/oauthgo/core/types"
 )
 
 // oAuth2OIDCProviderConfig contains required fields to configure an OAuth2 or OIDC provider.
 type oAuth2OIDCProviderConfig struct {
-	stateCodec              *oauthgostate.StateCodec
-	replayProtector         oauthgoreplay.ReplayProtector
-	httpClient              *http.Client
 	clientID                string
 	clientSecret            string
 	name                    string
@@ -60,16 +54,13 @@ func newOAuth2OIDCProviderConfig(
 ) *oAuth2OIDCProviderConfig {
 
 	return &oAuth2OIDCProviderConfig{
-		stateCodec:      providerConfig.StateCodec,
-		replayProtector: providerConfig.ReplayProtector,
-		httpClient:      providerConfig.HttpClient,
-		clientID:        providerConfig.ClientID,
-		clientSecret:    providerConfig.ClientSecret,
-		name:            resolveName(opts, func(o *oauthgotypes.OAuth2OIDCOptions) string { return pointer.GetString(o.Name) }, pointer.GetString(defaultOpts.Name)),
-		authURL:         pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.AuthURL }, defaultOpts.OAuth2.AuthURL)),
-		tokenURL:        pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.TokenURL }, defaultOpts.OAuth2.TokenURL)),
-		revokeTokenURL:  pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.RevocationURL }, defaultOpts.OAuth2.RevocationURL)),
-		usePKCE:         pointer.GetBool(resolveUsePKCE(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *bool { return o.UsePKCE }, defaultOpts.OAuth2.UsePKCE)),
+		clientID:       providerConfig.ClientID,
+		clientSecret:   providerConfig.ClientSecret,
+		name:           resolveName(opts, func(o *oauthgotypes.OAuth2OIDCOptions) string { return pointer.GetString(o.Name) }, pointer.GetString(defaultOpts.Name)),
+		authURL:        pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.AuthURL }, defaultOpts.OAuth2.AuthURL)),
+		tokenURL:       pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.TokenURL }, defaultOpts.OAuth2.TokenURL)),
+		revokeTokenURL: pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.RevocationURL }, defaultOpts.OAuth2.RevocationURL)),
+		usePKCE:        pointer.GetBool(resolveUsePKCE(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *bool { return o.UsePKCE }, defaultOpts.OAuth2.UsePKCE)),
 	}
 }
 
@@ -112,7 +103,7 @@ func newOAuth2Provider(config *oAuth2OIDCProviderConfig) oauthgoauth2.OAuth2Prov
 		TokenURL:      config.tokenURL,
 		RevocationURL: config.revokeTokenURL,
 		UsePKCE:       config.usePKCE,
-	}, config.stateCodec, config.replayProtector, config.httpClient)
+	})
 }
 
 func newOIDCDecorator(
@@ -127,14 +118,17 @@ func newOIDCDecorator(
 	uiURL := pointer.GetString(resolveOIDCURL(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *string { return o.UserInfoURL }, defaultOpts.OIDC.UserInfoURL))
 	disableDiscovery := pointer.GetBool(resolveDisableDiscovery(opts.OIDC, func(o *oauthgotypes.OIDCOptions) *bool { return o.DisableDiscovery }, defaultOpts.OIDC.DisableDiscovery))
 
-	return oidccore.NewOIDCDecorator(auth, config.httpClient, oidccore.OIDCConfig{
-		Issuer:                     issuer,
-		JWKSURL:                    jwksURL,
-		UserInfoURL:                uiURL,
-		DisableDiscovery:           disableDiscovery,
-		ClientID:                   config.clientID,
-		DisableIdTokenVerification: config.skipIDTokenVerification,
-	})
+	return oidccore.NewOIDCDecorator(
+		auth,
+		oidccore.OIDCConfig{
+			Issuer:                     issuer,
+			JWKSURL:                    jwksURL,
+			UserInfoURL:                uiURL,
+			DisableDiscovery:           disableDiscovery,
+			ClientID:                   config.clientID,
+			DisableIdTokenVerification: config.skipIDTokenVerification,
+		},
+	)
 }
 
 // resolveMode resolves the mode.

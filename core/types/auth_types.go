@@ -1,12 +1,5 @@
 package oauthgotypes
 
-import (
-	"net/http"
-
-	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
-	oauthgostate "github.com/zekith/oauthgo/core/state"
-)
-
 // Mode represents the authentication mode.
 type Mode int
 
@@ -46,9 +39,6 @@ type OAuth2OIDCOptions struct {
 
 // ProviderConfig is the config for the provider.
 type ProviderConfig struct {
-	StateCodec        *oauthgostate.StateCodec
-	ReplayProtector   oauthgoreplay.ReplayProtector
-	HttpClient        *http.Client
 	ClientID          string
 	ClientSecret      string
 	OAuth2ODICOptions *OAuth2OIDCOptions

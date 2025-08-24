@@ -27,23 +27,19 @@ type OIDCConfig struct {
 // OIDCDecorator wraps an OAuth2 provider and adds OIDC-specific functionality.
 type OIDCDecorator struct {
 	oAuth2Provider oauthgoauth2.OAuth2Provider // wrapped OAuth2 provider
-	httpClient     *http.Client
-	verifier       *gooidc.IDTokenVerifier // non-nil in OIDC mode
-	idp            *gooidc.Provider        // present when discovery is used
+	verifier       *gooidc.IDTokenVerifier     // non-nil in OIDC mode
+	idp            *gooidc.Provider            // present when discovery is used
 	cfg            OIDCConfig
 }
 
 // NewOIDCDecorator creates a new OIDCDecorator.
-func NewOIDCDecorator(oAuth2Provider oauthgoauth2.OAuth2Provider, httpClient *http.Client, cfg OIDCConfig) (*OIDCDecorator, error) {
-	httpClient = initializeHTTPClient(httpClient)
-
+func NewOIDCDecorator(oAuth2Provider oauthgoauth2.OAuth2Provider, cfg OIDCConfig) (*OIDCDecorator, error) {
 	d := &OIDCDecorator{
 		oAuth2Provider: oAuth2Provider,
-		httpClient:     httpClient,
 		cfg:            cfg,
 	}
 
-	verifier, idp, err := createVerifier(httpClient, cfg)
+	verifier, idp, err := createVerifier(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -54,21 +50,13 @@ func NewOIDCDecorator(oAuth2Provider oauthgoauth2.OAuth2Provider, httpClient *ht
 	return d, nil
 }
 
-// initializeHTTPClient initializes the HTTP client.
-func initializeHTTPClient(httpClient *http.Client) *http.Client {
-	if httpClient == nil {
-		return http.DefaultClient
-	}
-	return httpClient
-}
-
 // createVerifier creates the ID token verifier.
-func createVerifier(httpClient *http.Client, cfg OIDCConfig) (*gooidc.IDTokenVerifier, *gooidc.Provider, error) {
+func createVerifier(cfg OIDCConfig) (*gooidc.IDTokenVerifier, *gooidc.Provider, error) {
 	if cfg.DisableIdTokenVerification {
 		return nil, nil, nil // disable verification
 	}
 
-	ctx := gooidc.ClientContext(context.Background(), httpClient)
+	ctx := gooidc.ClientContext(context.Background(), http.DefaultClient)
 
 	if !cfg.DisableDiscovery {
 		return createVerifierWithDiscovery(ctx, cfg)
@@ -140,7 +128,7 @@ func (d *OIDCDecorator) userInfoFromDiscovery(ctx context.Context, accessToken s
 	log.Println("Using discovery provider to retrieve user info")
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
-	ui, err := d.idp.UserInfo(gooidc.ClientContext(ctx, d.httpClient), ts)
+	ui, err := d.idp.UserInfo(gooidc.ClientContext(ctx, http.DefaultClient), ts)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +149,7 @@ func (d *OIDCDecorator) userInfoFromHTTP(ctx context.Context, accessToken string
 	}
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	res, err := d.httpClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

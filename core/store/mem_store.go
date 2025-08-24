@@ -14,7 +14,7 @@ type MemorySessionStore struct {
 }
 
 // NewMemorySessionStore creates a new MemorySessionStore.
-func NewMemorySessionStore() *MemorySessionStore {
+func NewMemorySessionStore() SessionStore {
 	return &MemorySessionStore{vals: map[string]SessionData{}, exp: map[string]time.Time{}}
 }
 

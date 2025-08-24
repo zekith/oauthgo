@@ -5,43 +5,64 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	oauthgo "github.com/zekith/oauthgo/api"
-	"github.com/zekith/oauthgo/core/bootstrap"
+	oauthgocookie "github.com/zekith/oauthgo/core/cookie"
+	authogodeps "github.com/zekith/oauthgo/core/deps"
 	"github.com/zekith/oauthgo/core/provider/oauth2oidc"
+	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
+	oauthgostore "github.com/zekith/oauthgo/core/store"
 	coreprov "github.com/zekith/oauthgo/core/types"
 	oauthgogithub "github.com/zekith/oauthgo/provider/github"
 	oauthgogoogle "github.com/zekith/oauthgo/provider/google"
+	oauthgolinkedin "github.com/zekith/oauthgo/provider/linkedin"
+	oauthgomicrosoft "github.com/zekith/oauthgo/provider/microsoft"
 )
 
 func main() {
+	deps := &authogodeps.OAuthGoDeps{
+		//ReplayProtector: oauthgoreplay.NewRedisReplayProtector(redisClient, "oauthgo:replay"),
+		ReplayProtector: oauthgoreplay.NewMemoryReplayProtector(),
+		//SessionStore:    oauthgostore.NewRedisSessionStore(redisClient, "oauthgo:session"),
+		SessionStore: oauthgostore.NewMemorySessionStore(),
+		//SessionCookieManager: oauthgocookie.GetDefaultHMACCookieSessionManager(),
+		SessionCookieManager: &oauthgocookie.HMACSessionCookieManager{
+			Name:       "oauthgo_session",
+			Secret:     make([]byte, 0),
+			TTL:        time.Hour * 24 * 30,
+			Secure:     false,
+			Domain:     "",
+			HttpOnly:   true,
+			CookiePath: "/",
+			SameSite:   http.SameSiteLaxMode,
+		},
+	}
+	// Initialize the dependencies
+	authogodeps.Init(deps)
+
+	// Initialize the handler facade
 	handler := oauthgo.HandlerFacade{}
 
-	// Initialize the core components of the OAuth server provided by the library
-	// You can also use your own core components if you want to customize the behavior of the server
-	// e.g. you can use a different replay protector, session store, cookie manager, http client, etc.
-	// it is recommended to use redis for replay protector and session store so that the server can be scaled horizontally
-	core := oauthgobootstrap.BuildCore()
-
-	// Configure OAuth providers here
-	// We have a helper function for setting up the providers, it is just a helper function for the demo, it is not part of the core library.
-	// You can use your own provider implementation if you want to customize the behavior of the provider.
-
-	//TODO, need to handle session store and cookie manager consistently as callback
-	// is taking these as parameters and not using the core.
-	// LoggedInUser and Logout are using the core.
-
-	if err := setupOAuthProvider(handler, "google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", core, handler.AutoCallbackOIDC); err != nil {
+	if err := setupOAuthProvider(handler, "google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", handler.AutoCallbackOAuth2); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := setupOAuthProvider(handler, "github", oauthgogithub.NewWithOptions, "GITHUB_KEY", "GITHUB_SECRET", core, handler.AutoCallbackOAuth2); err != nil {
+	if err := setupOAuthProvider(handler, "github", oauthgogithub.NewWithOptions, "GITHUB_KEY", "GITHUB_SECRET", handler.AutoCallbackOAuth2); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := setupOAuthProvider(handler, "linkedin", oauthgolinkedin.NewWithOptions, "LINKEDIN_KEY", "LINKEDIN_SECRET", handler.AutoCallbackOIDC); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := setupOAuthProvider(handler, "microsoft", oauthgomicrosoft.NewWithOptions, "MICROSOFT_KEY", "MICROSOFT_SECRET", handler.AutoCallbackOIDC); err != nil {
 		log.Fatal(err)
 	}
 
 	// Optional prebuilt handlers
-	http.HandleFunc("/me", handler.LoggedInUser(core))
-	http.HandleFunc("/logout", handler.Logout(core))
+	http.HandleFunc("/me", handler.LoggedInUser())
+	http.HandleFunc("/logout", handler.Logout())
 
 	// Start HTTP server
 	addr := ":3000"
@@ -56,8 +77,7 @@ func setupOAuthProvider(
 	provider string,
 	newProviderFunc func(*coreprov.ProviderConfig) (oauth2oidc.OAuthO2IDCProvider, error),
 	clientIDEnv, clientSecretEnv string,
-	core *oauthgobootstrap.Core,
-	callbackFunc func(string, *oauthgobootstrap.Core) http.HandlerFunc,
+	callbackFunc func(string) http.HandlerFunc,
 ) error {
 
 	// Get the client ID and secret from environment variables
@@ -71,11 +91,8 @@ func setupOAuthProvider(
 
 	// Create a new provider function from the provider config
 	providerFunc, err := newProviderFunc(&coreprov.ProviderConfig{
-		StateCodec:      core.StateCodec,
-		ReplayProtector: core.ReplayProtector,
-		HttpClient:      core.HTTPClient,
-		ClientID:        clientID,
-		ClientSecret:    clientSecret,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create %s provider: %w", provider, err)
@@ -87,7 +104,7 @@ func setupOAuthProvider(
 	// Register the login and callback handlers for the provider
 
 	http.HandleFunc("/auth/"+provider, handler.AutoLogin(provider))
-	http.HandleFunc("/callback/"+provider, callbackFunc(provider, core))
+	http.HandleFunc("/callback/"+provider, callbackFunc(provider))
 
 	return nil
 }

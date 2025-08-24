@@ -16,7 +16,7 @@ type RedisSessionStore struct {
 }
 
 // NewRedisSessionStore creates a new RedisSessionStore.
-func NewRedisSessionStore(client *redis.Client, prefix string) *RedisSessionStore {
+func NewRedisSessionStore(client *redis.Client, prefix string) SessionStore {
 	return &RedisSessionStore{Client: client, Prefix: prefix}
 }
 

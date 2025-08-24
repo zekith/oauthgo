@@ -1,4 +1,4 @@
-package oauthgocrypto
+package oauthgoutils
 
 import (
 	"crypto/ecdsa"

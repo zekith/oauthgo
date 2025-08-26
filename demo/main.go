@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -154,7 +155,12 @@ func postOnly(h http.HandlerFunc) http.HandlerFunc {
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Printf("failed to close request body: %v", err)
+		}
+	}(r.Body)
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
 		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return false

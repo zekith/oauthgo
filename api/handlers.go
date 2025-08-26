@@ -27,6 +27,28 @@ func (h *HandlerFacade) Logout() http.HandlerFunc {
 	}
 }
 
+func (h *HandlerFacade) Revoke(provider string, token string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := providerManager.Revoke(provider, token, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write([]byte("Token revoked."))
+	}
+}
+
+func (h *HandlerFacade) Refresh(provider string, refreshToken string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		oAuthSession, err := providerManager.Refresh(provider, refreshToken, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write([]byte(fmt.Sprintf("New access token: %s", oAuthSession.AccessToken)))
+	}
+}
+
 // Login returns a handler that redirects to the provider login page.
 func (h *HandlerFacade) Login(provider string, authURLOptions AuthURLOptions) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -16,6 +16,9 @@ var googleDefaults = &oauthgotypes.OAuth2OIDCOptions{
 		TokenURL:      pointer.ToString("https://oauth2.googleapis.com/token"),
 		RevocationURL: pointer.ToString("https://oauth2.googleapis.com/revoke"),
 		Scopes:        pointer.To([]string{"email"}), // Applicable for OAuth2-only mode will be overridden by OIDC scopes if OIDC is enabled
+		ExtraAuth: pointer.To(map[string]string{
+			"access_type": "offline",
+		}),
 	},
 
 	OIDC: &oauthgotypes.OIDCOptions{

@@ -21,6 +21,7 @@ type oAuth2OIDCProviderConfig struct {
 	revokeTokenURL          string
 	usePKCE                 bool
 	skipIDTokenVerification bool
+	extraAuth               map[string]string
 }
 
 // NewOAuth2OIDCProvider constructs a provider (OAuth2 or OIDC) based on provider config + defaults.
@@ -61,6 +62,11 @@ func newOAuth2OIDCProviderConfig(
 		tokenURL:       pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.TokenURL }, defaultOpts.OAuth2.TokenURL)),
 		revokeTokenURL: pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.RevocationURL }, defaultOpts.OAuth2.RevocationURL)),
 		usePKCE:        pointer.GetBool(resolveUsePKCE(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *bool { return o.UsePKCE }, defaultOpts.OAuth2.UsePKCE)),
+		extraAuth: pointer.Get(resolveExtraAuth(
+			opts.OAuth2,
+			func(o *oauthgotypes.OAuth2Options) *map[string]string { return o.ExtraAuth },
+			defaultOpts.OAuth2.ExtraAuth,
+		)),
 	}
 }
 
@@ -103,6 +109,7 @@ func newOAuth2Provider(config *oAuth2OIDCProviderConfig) oauthgoauth2.OAuth2Prov
 		TokenURL:      config.tokenURL,
 		RevocationURL: config.revokeTokenURL,
 		UsePKCE:       config.usePKCE,
+		ExtraAuth:     config.extraAuth,
 	})
 }
 
@@ -163,6 +170,15 @@ func resolveUsePKCE(opts *oauthgotypes.OAuth2Options, getter func(*oauthgotypes.
 		return pointer.ToBool(true)
 	}
 	return defaultUsePKCE
+}
+
+func resolveExtraAuth(opts *oauthgotypes.OAuth2Options, getter func(*oauthgotypes.OAuth2Options) *map[string]string, defaultExtraAuth *map[string]string) *map[string]string {
+	if opts != nil {
+		if extraAuth := getter(opts); extraAuth != nil {
+			return extraAuth
+		}
+	}
+	return defaultExtraAuth
 }
 
 // resolveDisableIdTokenVerification resolves the disable id token verification flag.

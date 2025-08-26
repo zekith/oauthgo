@@ -17,8 +17,8 @@ var githubDefaults = &oauthgotypes.OAuth2OIDCOptions{
 		RevocationURL: nil, // GitHub does not support revocation
 		Scopes:        pointer.To([]string{"read:user", "user:email"}),
 	},
-	OIDC: nil, // GitHub does not support OIDC
-
+	OIDC:        nil, // GitHub does not support OIDC
+	UserInfoURL: pointer.ToString("https://api.github.com/user"),
 }
 
 func NewWithOptions(providerConfig *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {

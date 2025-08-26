@@ -17,6 +17,7 @@ type OAuth2Options struct {
 	PKCEAuthURL      *string   // optional, defaults to AuthURL
 	PKCEPublicClient *bool     // optional, defaults to false (if true, client secret is not sent in token exchange)
 	UsePKCE          *bool     // optional, defaults to true. Set false to disable PKCE (not recommended)
+	ExtraAuth        *map[string]string
 }
 
 // OIDCOptions are the options for OIDC.
@@ -31,10 +32,11 @@ type OIDCOptions struct {
 
 // OAuth2OIDCOptions are the options for the provider.
 type OAuth2OIDCOptions struct {
-	Name   *string        // optional
-	Mode   *Mode          // optional
-	OAuth2 *OAuth2Options // optional
-	OIDC   *OIDCOptions   // optional
+	Name        *string        // optional
+	Mode        *Mode          // optional
+	OAuth2      *OAuth2Options // optional
+	OIDC        *OIDCOptions   // optional
+	UserInfoURL *string        //  used for providers which don't support OIDC but have a userinfo endpoint e.g. Github
 }
 
 // ProviderConfig is the config for the provider.

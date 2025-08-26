@@ -44,7 +44,7 @@ func main() {
 	// Initialize the handler facade
 	handler := oauthgo.HandlerFacade{}
 
-	if err := setupOAuthProvider(handler, "google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", handler.AutoCallbackOAuth2); err != nil {
+	if err := setupOAuthProvider(handler, "google", oauthgogoogle.NewWithOptions, "GOOGLE_KEY", "GOOGLE_SECRET", handler.AutoCallbackOIDC); err != nil {
 		log.Fatal(err)
 	}
 

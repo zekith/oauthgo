@@ -8,22 +8,22 @@ import (
 
 // AuthURLOptions are the options for generating an authentication URL.
 type AuthURLOptions struct {
-	RedirectURL string
-	Scopes      []string
-	Prompt      string
-	LoginHint   string
-	Extras      map[string]string
+	RedirectURL string            // Redirect URL after authentication
+	Scopes      []string          // Scopes to request
+	Prompt      string            // Prompt to use
+	LoginHint   string            // Login hint to use
+	Extras      map[string]string // Additional parameters to include in the URL
 }
 
 // OAuth2Session represents an OAuth2 session containing an access token, refresh token, and ID token.
 type OAuth2Session struct {
-	Provider     string
-	AccessToken  string
-	RefreshToken string
-	IDToken      string // optional; empty in pure OAuth2
-	TokenType    string
-	Expiry       time.Time
-	Raw          map[string]any
+	Provider     string         // Required
+	AccessToken  string         // Required
+	RefreshToken string         // Present if the provider supports refresh tokens
+	IDToken      string         // optional; empty in pure OAuth2
+	TokenType    string         // Access token type
+	Expiry       time.Time      // Expiry time of the access token
+	Raw          map[string]any // Raw token data
 }
 
 // OAuth2Provider is an OAuth2 provider that needs to be implemented by a provider.

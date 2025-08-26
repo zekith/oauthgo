@@ -8,6 +8,7 @@ import (
 
 	oauthgocookie "github.com/zekith/oauthgo/core/cookie"
 	authogodeps "github.com/zekith/oauthgo/core/deps"
+	oauthgoauth2 "github.com/zekith/oauthgo/core/provider/oauth2"
 	"github.com/zekith/oauthgo/core/provider/oauth2oidc"
 	oauthgooidc "github.com/zekith/oauthgo/core/provider/oidc"
 	oauthgostore "github.com/zekith/oauthgo/core/store"
@@ -123,6 +124,24 @@ func (m *ProviderManager) LoggedInUser(
 
 }
 
+// Revoke revokes the token.
+func (m *ProviderManager) Revoke(
+	providerName string,
+	token string,
+	r *http.Request,
+) error {
+	return m.providers[providerName].Revoke(r.Context(), token)
+}
+
+// Refresh refreshes the access token based on a refresh token.
+func (m *ProviderManager) Refresh(
+	providerName string,
+	refreshToken string,
+	r *http.Request,
+) (*oauthgoauth2.OAuth2Session, error) {
+	return m.providers[providerName].Refresh(r.Context(), refreshToken)
+}
+
 // Logout logs out the user.
 func (m *ProviderManager) Logout(
 	w http.ResponseWriter,
@@ -131,10 +150,12 @@ func (m *ProviderManager) Logout(
 	if sid, err := r.Cookie(oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
 		if sd, ok, _ := authogodeps.Get().SessionStore.Get(r.Context(), sid.Value); ok {
 			if p, found := m.providers[sd.Provider]; found && sd.AccessToken != "" {
+				// Revoke the access token
 				_ = p.Revoke(r.Context(), sd.AccessToken)
 			}
 			_ = authogodeps.Get().SessionStore.Del(r.Context(), sid.Value)
 		}
+		// Clear SID cookie
 		http.SetCookie(w, &http.Cookie{
 			Name:     oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie),
 			Value:    "",
@@ -144,6 +165,7 @@ func (m *ProviderManager) Logout(
 			MaxAge:   -1,
 		})
 	}
+	// Clear session cookie
 	authogodeps.Get().SessionCookieManager.Clear(w)
 	w.Header().Set("Content-Type", ContentTypeHTML)
 	_, err := w.Write([]byte(HTMLLoggedOutRev))

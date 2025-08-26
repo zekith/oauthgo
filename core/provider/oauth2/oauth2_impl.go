@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"slices"
@@ -108,6 +109,8 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 	}
 
 	codeURL := o.AuthCodeURL(opaque, params...)
+
+	log.Println("auth url: %s", codeURL)
 	return codeURL, opaque, nil
 }
 
@@ -158,6 +161,10 @@ func (p *StandardOAuth2Provider) buildAuthParams(opts AuthURLOptions, pkce *oaut
 			oauth2.SetAuthURLParam("code_challenge", pkce.Challenge),
 			oauth2.SetAuthURLParam("code_challenge_method", pkce.Method),
 		)
+	}
+
+	for k, v := range opts.Extras {
+		params = append(params, oauth2.SetAuthURLParam(k, v))
 	}
 
 	for k, v := range p.cfg.ExtraAuth {

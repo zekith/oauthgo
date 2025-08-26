@@ -20,7 +20,7 @@ func NewRedisReplayProtector(client *redis.Client, prefix string) ReplayProtecto
 
 // FirstSeen returns true on first observation, false if seen before.
 func (r *RedisReplayProtector) FirstSeen(ctx context.Context, key string, ttl time.Duration) (bool, error) {
-	k := r.Prefix + key
+	k := r.Prefix + ":" + key
 	ok, err := r.Client.SetNX(ctx, k, "1", ttl).Result()
 	if err != nil {
 		return false, err

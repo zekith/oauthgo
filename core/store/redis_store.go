@@ -21,7 +21,7 @@ func NewRedisSessionStore(client *redis.Client, prefix string) SessionStore {
 }
 
 // key returns the key for the given session ID.
-func (s *RedisSessionStore) key(id string) string { return s.Prefix + id }
+func (s *RedisSessionStore) key(id string) string { return s.Prefix + ":" + id }
 
 // Put stores a session in the store.
 func (s *RedisSessionStore) Put(ctx context.Context, id string, data SessionData, ttl time.Duration) error {

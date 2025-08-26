@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/zekith/oauthgo/core/provider/oauth2oidc"
+	oauthgoutils "github.com/zekith/oauthgo/core/utils"
 )
 
 // providerManager is the global provider manager.
@@ -31,10 +32,10 @@ func (h *HandlerFacade) Logout() http.HandlerFunc {
 func (h *HandlerFacade) Revoke(provider string, token string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := providerManager.Revoke(provider, token, r); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to revoke token", err)
+			oauthgoutils.WriteError(w, http.StatusInternalServerError, "failed to revoke token", err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
+		oauthgoutils.WriteJSON(w, http.StatusOK, map[string]any{
 			"status":  "ok",
 			"revoked": true,
 		})
@@ -46,10 +47,10 @@ func (h *HandlerFacade) Refresh(provider string, refreshToken string) http.Handl
 	return func(w http.ResponseWriter, r *http.Request) {
 		oAuthSession, err := providerManager.Refresh(provider, refreshToken, r)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to refresh token", err)
+			oauthgoutils.WriteError(w, http.StatusInternalServerError, "failed to refresh token", err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
+		oauthgoutils.WriteJSON(w, http.StatusOK, map[string]any{
 			"status":  "ok",
 			"session": oAuthSession,
 		})
@@ -62,7 +63,7 @@ func (h *HandlerFacade) Login(provider string, authURLOptions AuthURLOptions) ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		url, _, err := providerManager.AuthURL(provider, r, authURLOptions)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to build auth url", err)
+			oauthgoutils.WriteError(w, http.StatusInternalServerError, "failed to build auth url", err)
 			return
 		}
 
@@ -80,7 +81,7 @@ func (h *HandlerFacade) Callback(provider string, opts CallbackOptions) http.Han
 			if opts.OnError != nil {
 				opts.OnError(w, r, err)
 			} else {
-				writeError(w, http.StatusInternalServerError, "login callback failed", err)
+				oauthgoutils.WriteError(w, http.StatusInternalServerError, "login callback failed", err)
 			}
 			return
 		}
@@ -91,13 +92,13 @@ func (h *HandlerFacade) Callback(provider string, opts CallbackOptions) http.Han
 			return
 		}
 
-		// Default: redirect if caller provided a target; else JSON.
-		if redir := firstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd")); redir != "" {
+		// Default: redirect if the caller provided a target; else JSON.
+		if redir := oauthgoutils.FirstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd")); redir != "" {
 			http.Redirect(w, r, redir, http.StatusFound)
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]any{
+		oauthgoutils.WriteJSON(w, http.StatusOK, map[string]any{
 			"status":   "ok",
 			"provider": provider,
 			"result":   res,
@@ -106,12 +107,12 @@ func (h *HandlerFacade) Callback(provider string, opts CallbackOptions) http.Han
 	}
 }
 
-// AutoLogin returns a handler that redirects to provider by default (like Login).
+// AutoLogin returns a handler that redirects to the provider by default (like Login).
 // If the client prefers JSON, pass ?json=1 or set Accept: application/json.
-func (h *HandlerFacade) AutoLogin(provider string) http.HandlerFunc {
+func (h *HandlerFacade) AutoLogin(baseUrl string, provider string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.Login(provider, AuthURLOptions{
-			RedirectURL: "http://" + r.Host + "/callback/" + provider,
+			RedirectURL: baseUrl + "/" + provider,
 		})(w, r)
 	}
 }
@@ -125,11 +126,11 @@ func (h *HandlerFacade) AutoCallbackOIDC(provider string) http.HandlerFunc {
 			SetSIDCookie:   true,
 			StoreSession:   true,
 			OnSuccess: func(w http.ResponseWriter, r *http.Request, res *CallbackResult) {
-				if redir := firstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd")); redir != "" {
+				if redir := oauthgoutils.FirstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd")); redir != "" {
 					http.Redirect(w, r, redir, http.StatusFound)
 					return
 				}
-				writeJSON(w, http.StatusOK, map[string]any{
+				oauthgoutils.WriteJSON(w, http.StatusOK, map[string]any{
 					"status":   "ok",
 					"provider": provider,
 					"user":     res.User,
@@ -138,7 +139,7 @@ func (h *HandlerFacade) AutoCallbackOIDC(provider string) http.HandlerFunc {
 				})
 			},
 			OnError: func(w http.ResponseWriter, r *http.Request, err error) {
-				writeError(w, http.StatusInternalServerError, "oidc auto-callback failed", err)
+				oauthgoutils.WriteError(w, http.StatusInternalServerError, "oidc auto-callback failed", err)
 			},
 		})(w, r)
 	}
@@ -150,11 +151,11 @@ func (h *HandlerFacade) AutoCallbackOAuth2(provider string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.Callback(provider, CallbackOptions{
 			OnSuccess: func(w http.ResponseWriter, r *http.Request, res *CallbackResult) {
-				if redir := firstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd")); redir != "" {
-					http.Redirect(w, r, redir, http.StatusFound)
+				if redirectUrl := oauthgoutils.FirstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd")); redirectUrl != "" {
+					http.Redirect(w, r, redirectUrl, http.StatusFound)
 					return
 				}
-				writeJSON(w, http.StatusOK, map[string]any{
+				oauthgoutils.WriteJSON(w, http.StatusOK, map[string]any{
 					"status":        "ok",
 					"provider":      provider,
 					"access_token":  res.Session.AccessToken,
@@ -163,7 +164,7 @@ func (h *HandlerFacade) AutoCallbackOAuth2(provider string) http.HandlerFunc {
 				})
 			},
 			OnError: func(w http.ResponseWriter, r *http.Request, err error) {
-				writeError(w, http.StatusInternalServerError, "oauth2 auto-callback failed", err)
+				oauthgoutils.WriteError(w, http.StatusInternalServerError, "oauth2 auto-callback failed", err)
 			},
 		})(w, r)
 	}

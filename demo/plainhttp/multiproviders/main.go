@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/pborman/uuid"
 	oauthgo "github.com/zekith/oauthgo/api"
 	oauthgocookie "github.com/zekith/oauthgo/core/cookie"
 	authogodeps "github.com/zekith/oauthgo/core/deps"
@@ -22,7 +23,14 @@ import (
 	oauthgomicrosoft "github.com/zekith/oauthgo/provider/microsoft"
 )
 
+const (
+	serverPort = ":3000"
+)
+
 func main() {
+	// Initialize the dependencies using in-memory stores and replay protection for the demo
+	// Please refer gin multi providers example for using Redis
+
 	deps := &authogodeps.OAuthGoDeps{
 		//ReplayProtector: oauthgoreplay.NewRedisReplayProtector(redisClient, "oauthgo:replay"),
 		ReplayProtector: oauthgoreplay.NewMemoryReplayProtector(),
@@ -30,14 +38,14 @@ func main() {
 		SessionStore: oauthgostore.NewMemorySessionStore(),
 		//SessionCookieManager: oauthgocookie.GetDefaultHMACCookieSessionManager(),
 		SessionCookieManager: &oauthgocookie.HMACSessionCookieManager{
-			Name:       "oauthgo_session",
-			Secret:     make([]byte, 0),
-			TTL:        time.Hour * 24 * 30,
-			Secure:     false,
-			Domain:     "",
-			HttpOnly:   true,
-			CookiePath: "/",
-			SameSite:   http.SameSiteLaxMode,
+			Name:       "oauthgo_session",    // Set to your desired cookie name in production
+			Secret:     []byte(uuid.New()),   // In production, use a secure, random secret and keep it safe
+			TTL:        time.Hour * 24 * 30,  // Set to your desired session TTL in production
+			Secure:     false,                // Set to true in production
+			Domain:     "",                   // Set to your domain in production
+			HttpOnly:   true,                 // Set to true in production
+			CookiePath: "/",                  // Set to your cookie path in production
+			SameSite:   http.SameSiteLaxMode, // Set to your cookie SameSite mode in production
 		},
 	}
 	// Initialize the dependencies
@@ -99,7 +107,7 @@ func main() {
 	}))
 
 	// Start HTTP server
-	addr := ":3000"
+	addr := serverPort
 	log.Printf("listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
@@ -136,8 +144,9 @@ func setupOAuthProvider(
 	handler.Register(provider, providerFunc)
 
 	// Register the login and callback handlers for the provider
+	baseUrl := "http://localhost" + serverPort + "/callback"
 
-	http.HandleFunc("/auth/"+provider, handler.AutoLogin(provider))
+	http.HandleFunc("/auth/"+provider, handler.AutoLogin(baseUrl, provider))
 	http.HandleFunc("/callback/"+provider, callbackFunc(provider))
 
 	return nil

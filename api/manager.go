@@ -1,7 +1,6 @@
 package oauthgo
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -115,11 +114,11 @@ func (m *ProviderManager) LoggedInUser(
 				resp["sid"] = sid.Value
 			}
 		}
-		writeJSON(w, http.StatusOK, resp)
+		oauthgoutils.WriteJSON(w, http.StatusOK, resp)
 		return
 	}
 
-	writeError(w, http.StatusUnauthorized, ErrNotSignedIn, nil)
+	oauthgoutils.WriteError(w, http.StatusUnauthorized, ErrNotSignedIn, nil)
 }
 
 // Revoke revokes the token.
@@ -147,7 +146,7 @@ func (m *ProviderManager) Logout(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	redirectTarget := firstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd"))
+	redirectTarget := oauthgoutils.FirstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd"))
 
 	resp := map[string]any{
 		"status":          "logged_out",
@@ -183,7 +182,7 @@ func (m *ProviderManager) Logout(
 		return
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	oauthgoutils.WriteJSON(w, http.StatusOK, resp)
 }
 
 // ---------------------- internals ----------------------
@@ -258,40 +257,4 @@ func (m *ProviderManager) handleCookieStorage(w http.ResponseWriter, opts Callba
 	}
 
 	return authogodeps.Get().SessionCookieManager.Set(w, cookieSession)
-}
-
-// ---------------------- JSON helpers ----------------------
-
-type apiError struct {
-	Message string `json:"message"`
-	Detail  string `json:"detail,omitempty"`
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", ContentTypeJSON)
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, status int, msg string, err error) {
-	detail := ""
-	if err != nil {
-		detail = err.Error()
-	}
-	writeJSON(w, status, map[string]any{
-		"error": apiError{
-			Message: msg,
-			Detail:  detail,
-		},
-	})
-}
-
-// Utility: prefer the first non-empty string.
-func firstNonEmpty(vals ...string) string {
-	for _, v := range vals {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
 }

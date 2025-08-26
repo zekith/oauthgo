@@ -1,6 +1,7 @@
 package oauthgo
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,17 +17,14 @@ import (
 )
 
 const (
-	ContentTypeHTML  = "text/html; charset=utf-8"
-	HTMLSignedIn     = "<h3>Signed-in</h3><pre>%+v</pre>"
+	ContentTypeJSON  = "application/json; charset=utf-8"
 	EnvSIDCookie     = "SID_COOKIE"
-	HTMLServerSess   = "<h4>Server session</h4><pre>%+v</pre><p><a href='/logout'>Logout</a> | <a href='/logout-and-revoke'>Logout & Revoke</a></p>"
 	DefaultSIDCookie = "oauthgo_sid"
 	ErrNotSignedIn   = "not signed in"
 	PathRoot         = "/"
-	HTMLLoggedOutRev = "<p>Logged out <a href='/'>Home</a></p>"
 )
 
-// ProviderManager is the main entry point for the OIDC provider.
+// ProviderManager is the main entry point for the OIDC/OAuth2 provider.
 type ProviderManager struct {
 	providers map[string]oauth2oidc.OAuthO2IDCProvider
 }
@@ -97,31 +95,31 @@ func (m *ProviderManager) Callback(
 	}, nil
 }
 
-// LoggedInUser returns the user if the user is logged in.
+// LoggedInUser writes JSON information about the logged-in user (cookie + optional server session).
 func (m *ProviderManager) LoggedInUser(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	w.Header().Set("Content-Type", ContentTypeJSON)
 
 	if s, ok := authogodeps.Get().SessionCookieManager.Parse(r); ok {
-		w.Header().Set("Content-Type", ContentTypeHTML)
-		_, err := w.Write([]byte(fmt.Sprintf(HTMLSignedIn, *s)))
-		if err != nil {
-			return
+		resp := map[string]any{
+			"status":          "signed_in",
+			"cookie_session":  s,
+			"server_session":  nil,
+			"sid_cookie_name": oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie),
 		}
 		if sid, err := r.Cookie(oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
 			if sd, ok, _ := authogodeps.Get().SessionStore.Get(r.Context(), sid.Value); ok {
-				_, err := w.Write([]byte(fmt.Sprintf(HTMLServerSess, sd)))
-				if err != nil {
-					panic(err)
-					return
-				}
+				resp["server_session"] = sd
+				resp["sid"] = sid.Value
 			}
 		}
+		writeJSON(w, http.StatusOK, resp)
 		return
 	}
-	http.Error(w, ErrNotSignedIn, http.StatusUnauthorized)
 
+	writeError(w, http.StatusUnauthorized, ErrNotSignedIn, nil)
 }
 
 // Revoke revokes the token.
@@ -142,16 +140,28 @@ func (m *ProviderManager) Refresh(
 	return m.providers[providerName].Refresh(r.Context(), refreshToken)
 }
 
-// Logout logs out the user.
+// Logout logs out the user (revoke if possible, clear server and browser sessions).
+// Returns JSON by default; if a redirect target is provided via query (?redirect_uri=/ or ?rd=/),
+// performs a 302 redirect instead.
 func (m *ProviderManager) Logout(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	redirectTarget := firstNonEmpty(r.URL.Query().Get("redirect_uri"), r.URL.Query().Get("rd"))
+
+	resp := map[string]any{
+		"status":          "logged_out",
+		"revoked":         false,
+		"server_session":  "cleared",
+		"browser_cookies": "cleared",
+	}
+
 	if sid, err := r.Cookie(oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie)); err == nil {
 		if sd, ok, _ := authogodeps.Get().SessionStore.Get(r.Context(), sid.Value); ok {
 			if p, found := m.providers[sd.Provider]; found && sd.AccessToken != "" {
-				// Revoke the access token
-				_ = p.Revoke(r.Context(), sd.AccessToken)
+				if err := p.Revoke(r.Context(), sd.AccessToken); err == nil {
+					resp["revoked"] = true
+				}
 			}
 			_ = authogodeps.Get().SessionStore.Del(r.Context(), sid.Value)
 		}
@@ -167,15 +177,17 @@ func (m *ProviderManager) Logout(
 	}
 	// Clear session cookie
 	authogodeps.Get().SessionCookieManager.Clear(w)
-	w.Header().Set("Content-Type", ContentTypeHTML)
-	_, err := w.Write([]byte(HTMLLoggedOutRev))
-	if err != nil {
-		panic(err)
+
+	if redirectTarget != "" {
+		http.Redirect(w, r, redirectTarget, http.StatusFound)
 		return
 	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
-// validateProvider validates the provider.
+// ---------------------- internals ----------------------
+
 func (m *ProviderManager) validateProvider(providerName string) (oauth2oidc.OAuthO2IDCProvider, error) {
 	provider, ok := m.providers[providerName]
 	if !ok {
@@ -184,19 +196,16 @@ func (m *ProviderManager) validateProvider(providerName string) (oauth2oidc.OAut
 	return provider, nil
 }
 
-// exchangeCodeForToken exchanges the code for a token.
 func (m *ProviderManager) exchangeCodeForToken(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider) (*SessionData, error) {
 	code := r.FormValue("code")
 	state := r.FormValue("state")
 	return provider.Exchange(r.Context(), r, code, state)
 }
 
-// fetchUserInfo fetches the user info.
 func (m *ProviderManager) fetchUserInfo(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider, session *SessionData) (*oauthgooidc.User, error) {
 	return provider.UserInfo(r.Context(), session.AccessToken, session.IDToken)
 }
 
-// handleSessionStorage handles the session storage.
 func (m *ProviderManager) handleSessionStorage(r *http.Request, w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) (string, error) {
 	if !opts.StoreSession || authogodeps.Get().SessionStore == nil {
 		return "", nil
@@ -225,10 +234,9 @@ func (m *ProviderManager) handleSessionStorage(r *http.Request, w http.ResponseW
 	return sid, nil
 }
 
-// setSIDCookie sets the SID cookie.
 func (m *ProviderManager) setSIDCookie(w http.ResponseWriter, sid string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     DefaultSIDCookie,
+		Name:     oauthgoutils.Get(EnvSIDCookie, DefaultSIDCookie),
 		Value:    sid,
 		Path:     "/",
 		HttpOnly: true,
@@ -236,7 +244,6 @@ func (m *ProviderManager) setSIDCookie(w http.ResponseWriter, sid string) {
 	})
 }
 
-// handleCookieStorage handles the cookie storage.
 func (m *ProviderManager) handleCookieStorage(w http.ResponseWriter, opts CallbackOptions, session *SessionData, user *oauthgooidc.User) error {
 	if !opts.SetLoginCookie || authogodeps.Get().SessionCookieManager == nil {
 		return nil
@@ -251,4 +258,40 @@ func (m *ProviderManager) handleCookieStorage(w http.ResponseWriter, opts Callba
 	}
 
 	return authogodeps.Get().SessionCookieManager.Set(w, cookieSession)
+}
+
+// ---------------------- JSON helpers ----------------------
+
+type apiError struct {
+	Message string `json:"message"`
+	Detail  string `json:"detail,omitempty"`
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", ContentTypeJSON)
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeError(w http.ResponseWriter, status int, msg string, err error) {
+	detail := ""
+	if err != nil {
+		detail = err.Error()
+	}
+	writeJSON(w, status, map[string]any{
+		"error": apiError{
+			Message: msg,
+			Detail:  detail,
+		},
+	})
+}
+
+// Utility: prefer the first non-empty string.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

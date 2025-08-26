@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -64,6 +65,38 @@ func main() {
 	http.HandleFunc("/me", handler.LoggedInUser())
 	http.HandleFunc("/logout", handler.Logout())
 
+	http.HandleFunc("/refresh", postOnly(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Provider     string `json:"provider"`
+			RefreshToken string `json:"refresh_token"`
+		}
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		if req.Provider == "" || req.RefreshToken == "" {
+			http.Error(w, "provider and refresh_token are required", http.StatusBadRequest)
+			return
+		}
+		// Build the concrete handler from runtime values and invoke it
+		handler.Refresh(req.Provider, req.RefreshToken)(w, r)
+	}))
+
+	// POST /api/revoke  { "provider": "github", "token": "ACCESS_OR_REFRESH_TOKEN" }
+	http.HandleFunc("/revoke", postOnly(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Provider string `json:"provider"`
+			Token    string `json:"token"`
+		}
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		if req.Provider == "" || req.Token == "" {
+			http.Error(w, "provider and token are required", http.StatusBadRequest)
+			return
+		}
+		handler.Revoke(req.Provider, req.Token)(w, r)
+	}))
+
 	// Start HTTP server
 	addr := ":3000"
 	log.Printf("listening on %s", addr)
@@ -107,4 +140,24 @@ func setupOAuthProvider(
 	http.HandleFunc("/callback/"+provider, callbackFunc(provider))
 
 	return nil
+}
+
+func postOnly(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h(w, r)
+	}
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return false
+	}
+	return true
 }

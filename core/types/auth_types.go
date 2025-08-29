@@ -32,10 +32,11 @@ type OIDCOptions struct {
 
 // OAuth2OIDCOptions are the options for the provider.
 type OAuth2OIDCOptions struct {
-	Name   *string        // optional
-	Mode   *Mode          // optional
-	OAuth2 *OAuth2Options // optional
-	OIDC   *OIDCOptions   // optional
+	Name        *string        // optional
+	Mode        *Mode          // optional
+	OAuth2      *OAuth2Options // optional
+	OIDC        *OIDCOptions   // optional
+	UserInfoURL *string        // optional, add ONLY if OIDC is not supported by the provider
 }
 
 // ProviderConfig is the config for the provider.
@@ -43,4 +44,6 @@ type ProviderConfig struct {
 	ClientID          string
 	ClientSecret      string
 	OAuth2ODICOptions *OAuth2OIDCOptions
+	UserinfoURL       *string
+	ExtraConfig       *map[string]string
 }

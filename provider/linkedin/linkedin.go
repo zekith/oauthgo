@@ -31,3 +31,10 @@ var linkedInDefaults = &oauthgotypes.OAuth2OIDCOptions{
 func NewWithOptions(providerConfig *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
 	return oauthgofactory.NewOAuth2OIDCProvider(providerConfig, linkedInDefaults)
 }
+
+func GetUserInfoEndpoint() string {
+	if linkedInDefaults.OIDC != nil && linkedInDefaults.OIDC.UserInfoURL != nil {
+		return *linkedInDefaults.OIDC.UserInfoURL
+	}
+	return ""
+}

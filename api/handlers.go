@@ -1,6 +1,9 @@
 package oauthgo
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/zekith/oauthgo/core/provider/oauth2oidc"
@@ -173,4 +176,49 @@ func (h *HandlerFacade) AutoCallbackOAuth2(provider string) http.HandlerFunc {
 // Register registers a provider.
 func (h *HandlerFacade) Register(name string, provider oauth2oidc.OAuthO2IDCProvider) {
 	providerManager.Register(name, provider)
+}
+
+// UserInfo returns a handler that fetches user info from the userinfo endpoint using the access token from the Authorization header.
+func (h *HandlerFacade) UserInfo(userInfoEndpoint string, method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Read the access token from the Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" || len(authHeader) < 8 || authHeader[:7] != "Bearer " {
+			oauthgoutils.WriteError(w, http.StatusUnauthorized, "missing or invalid Authorization header", nil)
+			return
+		}
+		accessToken := authHeader[7:]
+
+		req, err := http.NewRequest(method, userInfoEndpoint, nil)
+		if err != nil {
+			oauthgoutils.WriteError(w, http.StatusInternalServerError, "failed to create userinfo request", err)
+			return
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			oauthgoutils.WriteError(w, http.StatusInternalServerError, "failed to call userinfo endpoint", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			oauthgoutils.WriteError(w, resp.StatusCode, "userinfo request failed", fmt.Errorf(string(body)))
+			return
+		}
+
+		var result map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			oauthgoutils.WriteError(w, http.StatusInternalServerError, "failed to decode userinfo response", err)
+			return
+		}
+
+		oauthgoutils.WriteJSON(w, http.StatusOK, map[string]any{
+			"status":   "ok",
+			"userInfo": result,
+		})
+	}
 }

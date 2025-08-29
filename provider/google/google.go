@@ -22,11 +22,19 @@ var googleDefaults = &oauthgotypes.OAuth2OIDCOptions{
 	},
 
 	OIDC: &oauthgotypes.OIDCOptions{
-		Issuer: pointer.ToString("https://accounts.google.com"),
-		Scopes: pointer.To([]string{"openid", "profile", "email"}), // Applicable for OIDC mode
+		Issuer:      pointer.ToString("https://accounts.google.com"),
+		Scopes:      pointer.To([]string{"openid", "profile", "email"}), // Applicable for OIDC mode
+		UserInfoURL: pointer.ToString("https://openidconnect.googleapis.com/v1/userinfo"),
 	},
 }
 
 func NewWithOptions(providerConfig *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
 	return oauthgofactory.NewOAuth2OIDCProvider(providerConfig, googleDefaults)
+}
+
+func GetUserInfoEndpoint() string {
+	if googleDefaults.OIDC != nil && googleDefaults.OIDC.UserInfoURL != nil {
+		return *googleDefaults.OIDC.UserInfoURL
+	}
+	return ""
 }

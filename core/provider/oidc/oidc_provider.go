@@ -8,16 +8,16 @@ import (
 
 // User represents details that can be extracted from an ID token.
 type User struct {
-	Subject       string
-	Email         string
-	EmailVerified bool
-	Name          string
-	GivenName     string
-	FamilyName    string
-	Picture       string
-	Locale        *oauthgotypes.Locale
-	Attributes    map[string]string
-	RawProfile    map[string]any
+	Subject       string               `json:"sub"`
+	Email         string               `json:"email"`
+	EmailVerified bool                 `json:"email_verified"`
+	Name          string               `json:"name"`
+	GivenName     string               `json:"given_name"`
+	FamilyName    string               `json:"family_name"`
+	Picture       string               `json:"picture"`
+	Locale        *oauthgotypes.Locale `json:"locale"`
+	Attributes    map[string]string    `json:"attributes"`
+	RawProfile    map[string]any       `json:"raw_profile"`
 }
 
 // OIDCProvider Identity-only surface (OIDC or custom profile).

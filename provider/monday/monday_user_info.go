@@ -52,7 +52,7 @@ type GraphQLResponse struct {
 }
 
 // GetMondayUserInfoHandler returns an http.HandlerFunc that extracts the access token
-// from Authorization header and fetches extended user info from Monday.com
+// from the Authorization header and fetches extended user info from Monday.com
 func GetMondayUserInfoHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract the Authorization header

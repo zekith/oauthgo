@@ -31,6 +31,7 @@ import (
 	oauthgodropbox "github.com/zekith/oauthgo/provider/dropbox"
 	oauthgofacebook "github.com/zekith/oauthgo/provider/facebook"
 	oauthgofigma "github.com/zekith/oauthgo/provider/figma"
+	oauthgofitbit "github.com/zekith/oauthgo/provider/fitbit"
 	oauthgogitea "github.com/zekith/oauthgo/provider/gitea"
 	oauthgogithub "github.com/zekith/oauthgo/provider/github"
 	oauthgogitlab "github.com/zekith/oauthgo/provider/gitlab"
@@ -38,6 +39,7 @@ import (
 	oauthgoheroku "github.com/zekith/oauthgo/provider/heroku"
 	oauthgoinstagram "github.com/zekith/oauthgo/provider/instagram"
 	oauthgointercom "github.com/zekith/oauthgo/provider/intercom"
+	oauthgokakao "github.com/zekith/oauthgo/provider/kakao"
 	oauthgoline "github.com/zekith/oauthgo/provider/line"
 	oauthgolinkedin "github.com/zekith/oauthgo/provider/linkedin"
 	oauthgomicrosoft "github.com/zekith/oauthgo/provider/microsoft"
@@ -186,6 +188,8 @@ func setupOAuthProviders(r *gin.Engine, handler oauthgo.HandlerFacade) error {
 		{"yahoo", oauthgoyahoo.NewWithOptions, "YAHOO_KEY", "YAHOO_SECRET", nil, handler.AutoCallbackOIDC},
 		{"yandex", oauthgoyandex.NewWithOptions, "YANDEX_KEY", "YANDEX_SECRET", nil, handler.AutoCallbackOAuth2},
 		{"apple", oauthgoapple.NewWithOptions, "APPLE_KEY", "APPLE_SECRET", nil, handler.AutoCallbackOAuth2},
+		{"kakao", oauthgokakao.NewWithOptions, "KAKAO_KEY", "KAKAO_SECRET", nil, handler.AutoCallbackOAuth2},
+		{"fitbit", oauthgofitbit.NewWithOptions, "FITBIT_KEY", "FITBIT_SECRET", nil, handler.AutoCallbackOAuth2},
 	}
 
 	for _, provider := range providers {
@@ -247,6 +251,8 @@ func setupUserInfoRoutes(r *gin.Engine, handler oauthgo.HandlerFacade) {
 		{"yahoo", oauthgoyahoo.GetUserInfoEndpoint(), "GET"},
 		{"yandex", oauthgoyandex.GetUserInfoEndpoint(), "GET"},
 		{"apple", oauthgoapple.GetUserInfoEndpoint(), "GET"},
+		{"kakao", oauthgokakao.GetUserInfoEndpoint(), "GET"},
+		{"fitbit", oauthgofitbit.GetUserInfoEndpoint(), "GET"},
 	}
 
 	for _, userInfoProvider := range userInfoProviders {

@@ -7,35 +7,8 @@ import (
 	"strings"
 )
 
-// IntercomUser represents the extended response from Intercom's /me endpoint
-type IntercomUser struct {
-	Type          string `json:"type"`
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	Name          string `json:"name"`
-	EmailVerified bool   `json:"email_verified"`
-
-	App struct {
-		Type                 string `json:"type"`
-		IDCode               string `json:"id_code"`
-		Name                 string `json:"name"`
-		CreatedAt            int64  `json:"created_at"`
-		Secure               bool   `json:"secure"`
-		IdentityVerification bool   `json:"identity_verification"`
-		Timezone             string `json:"timezone"`
-		Region               string `json:"region"`
-	} `json:"app"`
-
-	Avatar struct {
-		Type     string `json:"type"`
-		ImageURL string `json:"image_url"`
-	} `json:"avatar"`
-
-	HasInboxSeat bool `json:"has_inbox_seat"`
-}
-
-// GetIntercomUserInfoHandler returns an http.HandlerFunc that fetches Intercom user info
-func GetIntercomUserInfoHandler() http.HandlerFunc {
+// GetUserInfo returns an http.HandlerFunc that fetches Intercom user info
+func GetUserInfo() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract Authorization header
 		authHeader := r.Header.Get("Authorization")
@@ -67,7 +40,7 @@ func GetIntercomUserInfoHandler() http.HandlerFunc {
 			return
 		}
 
-		var user IntercomUser
+		user := make(map[string]interface{})
 		if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
 			http.Error(w, fmt.Sprintf("failed to decode response: %v", err), http.StatusInternalServerError)
 			return

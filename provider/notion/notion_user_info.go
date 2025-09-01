@@ -7,31 +7,9 @@ import (
 	"strings"
 )
 
-// NotionResponse represents the full API response
-type NotionResponse struct {
-	Object string `json:"object"`
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Person *struct {
-		Email string `json:"email"`
-	} `json:"person,omitempty"`
-	Bot *struct {
-		Owner struct {
-			Type string `json:"type"`
-			User *struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"user,omitempty"`
-			Workspace bool `json:"workspace,omitempty"`
-		} `json:"owner"`
-	} `json:"bot,omitempty"`
-	AvatarURL string `json:"avatar_url,omitempty"`
-}
-
-// GetNotionUserInfoHandler returns an http.HandlerFunc that extracts the access token
+// GetUserInfo returns an http.HandlerFunc that extracts the access token
 // from the Authorization header and fetches user info from Notion (/v1/users/me).
-func GetNotionUserInfoHandler(notionVersion string) http.HandlerFunc {
+func GetUserInfo(notionVersion string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract the Authorization header
 		authHeader := r.Header.Get("Authorization")
@@ -68,7 +46,8 @@ func GetNotionUserInfoHandler(notionVersion string) http.HandlerFunc {
 			return
 		}
 
-		var notionResp NotionResponse
+		notionResp := make(map[string]interface{})
+
 		if err := json.NewDecoder(resp.Body).Decode(&notionResp); err != nil {
 			http.Error(w, fmt.Sprintf("failed to decode response: %v", err), http.StatusInternalServerError)
 			return

@@ -23,11 +23,14 @@ import (
 	oauthgoatlassian "github.com/zekith/oauthgo/provider/atlassian"
 	oauthgoauth0 "github.com/zekith/oauthgo/provider/auth0"
 	oauthgobitbucket "github.com/zekith/oauthgo/provider/bitbucket"
+	oauthgoboldsign "github.com/zekith/oauthgo/provider/boldsign"
 	oauthgobox "github.com/zekith/oauthgo/provider/box"
 	oauthgoclickup "github.com/zekith/oauthgo/provider/clickup"
+	oauthgocognito "github.com/zekith/oauthgo/provider/cognito"
 	oauthgodailymotion "github.com/zekith/oauthgo/provider/dailymotion"
 	oauthgodigitalocean "github.com/zekith/oauthgo/provider/digitalocean"
 	oauthgodiscord "github.com/zekith/oauthgo/provider/discord"
+	oauthgodocusign "github.com/zekith/oauthgo/provider/docusign"
 	oauthgodropbox "github.com/zekith/oauthgo/provider/dropbox"
 	oauthgofacebook "github.com/zekith/oauthgo/provider/facebook"
 	oauthgofigma "github.com/zekith/oauthgo/provider/figma"
@@ -37,11 +40,13 @@ import (
 	oauthgogitlab "github.com/zekith/oauthgo/provider/gitlab"
 	oauthgogoogle "github.com/zekith/oauthgo/provider/google"
 	oauthgoheroku "github.com/zekith/oauthgo/provider/heroku"
+	oauthgohubspot "github.com/zekith/oauthgo/provider/hubspot"
 	oauthgoinstagram "github.com/zekith/oauthgo/provider/instagram"
 	oauthgointercom "github.com/zekith/oauthgo/provider/intercom"
 	oauthgokakao "github.com/zekith/oauthgo/provider/kakao"
 	oauthgoline "github.com/zekith/oauthgo/provider/line"
 	oauthgolinkedin "github.com/zekith/oauthgo/provider/linkedin"
+	oauthgomailchimp "github.com/zekith/oauthgo/provider/mailchimp"
 	oauthgomicrosoft "github.com/zekith/oauthgo/provider/microsoft"
 	oauthgomiro "github.com/zekith/oauthgo/provider/miro"
 	oauthgomonday "github.com/zekith/oauthgo/provider/monday"
@@ -50,6 +55,7 @@ import (
 	oauthgopaypal "github.com/zekith/oauthgo/provider/paypal"
 	oauthgoreddit "github.com/zekith/oauthgo/provider/reddit"
 	oauthgosalesforce "github.com/zekith/oauthgo/provider/salesforce"
+	oauthgoservicenow "github.com/zekith/oauthgo/provider/servicenow"
 	oauthgoshopify "github.com/zekith/oauthgo/provider/shopify"
 	oauthgoslack "github.com/zekith/oauthgo/provider/slack"
 	oauthgospotify "github.com/zekith/oauthgo/provider/spotify"
@@ -60,10 +66,13 @@ import (
 	oauthgotumblr "github.com/zekith/oauthgo/provider/tumblr"
 	oauthgotwitch "github.com/zekith/oauthgo/provider/twitch"
 	oauthgouber "github.com/zekith/oauthgo/provider/uber"
+	oauthgoworkday "github.com/zekith/oauthgo/provider/workday"
 	oauthgox "github.com/zekith/oauthgo/provider/x"
 	oauthgoxero "github.com/zekith/oauthgo/provider/xero"
 	oauthgoyahoo "github.com/zekith/oauthgo/provider/yahoo"
 	oauthgoyandex "github.com/zekith/oauthgo/provider/yandex"
+	oauthgozendesk "github.com/zekith/oauthgo/provider/zendesk"
+	oauthgozoho "github.com/zekith/oauthgo/provider/zoho"
 	oauthgozoom "github.com/zekith/oauthgo/provider/zoom"
 )
 
@@ -190,6 +199,15 @@ func setupOAuthProviders(r *gin.Engine, handler oauthgo.HandlerFacade) error {
 		{"apple", oauthgoapple.NewWithOptions, "APPLE_KEY", "APPLE_SECRET", nil, handler.AutoCallbackOAuth2},
 		{"kakao", oauthgokakao.NewWithOptions, "KAKAO_KEY", "KAKAO_SECRET", nil, handler.AutoCallbackOAuth2},
 		{"fitbit", oauthgofitbit.NewWithOptions, "FITBIT_KEY", "FITBIT_SECRET", nil, handler.AutoCallbackOAuth2},
+		{"hubspot", oauthgohubspot.NewWithOptions, "HUBSPOT_KEY", "HUBSPOT_SECRET", nil, handler.AutoCallbackOAuth2},
+		{"zoho", oauthgozoho.NewWithOptions, "ZOHO_KEY", "ZOHO_SECRET", pointer.To(map[string]string{"domain": os.Getenv("ZOHO_DOMAIN")}), handler.AutoCallbackOAuth2},
+		{"docusign", oauthgodocusign.NewWithOptions, "DOCUSIGN_KEY", "DOCUSIGN_SECRET", pointer.To(map[string]string{"domain": os.Getenv("DOCUSIGN_DOMAIN")}), handler.AutoCallbackOIDC},
+		{"boldsign", oauthgoboldsign.NewWithOptions, "BOLDSIGN_KEY", "BOLDSIGN_SECRET", nil, handler.AutoCallbackOIDC},
+		{"zendesk", oauthgozendesk.NewWithOptions, "ZENDESK_KEY", "ZENDESK_SECRET", pointer.To(map[string]string{"domain": os.Getenv("ZENDESK_DOMAIN")}), handler.AutoCallbackOAuth2},
+		{"servicenow", oauthgoservicenow.NewWithOptions, "SERVICENOW_KEY", "SERVICENOW_SECRET", pointer.To(map[string]string{"domain": os.Getenv("SERVICENOW_DOMAIN")}), handler.AutoCallbackOAuth2},
+		{"workday", oauthgoworkday.NewWithOptions, "WORKDAY_KEY", "WORKDAY_SECRET", pointer.To(map[string]string{"tenant": os.Getenv("WORKDAY_TENANT")}), handler.AutoCallbackOAuth2},
+		{"mailchimp", oauthgomailchimp.NewWithOptions, "MAILCHIMP_KEY", "MAILCHIMP_SECRET", nil, handler.AutoCallbackOAuth2},
+		{"cognito", oauthgocognito.NewWithOptions, "COGNITO_KEY", "COGNITO_SECRET", pointer.To(map[string]string{"domain": os.Getenv("COGNITO_DOMAIN"), "userPoolId": os.Getenv("COGNITO_USER_POOL_ID"), "region": os.Getenv("COGNITO_REGION")}), handler.AutoCallbackOIDC},
 	}
 
 	for _, provider := range providers {
@@ -253,19 +271,32 @@ func setupUserInfoRoutes(r *gin.Engine, handler oauthgo.HandlerFacade) {
 		{"apple", oauthgoapple.GetUserInfoEndpoint(), "GET"},
 		{"kakao", oauthgokakao.GetUserInfoEndpoint(), "GET"},
 		{"fitbit", oauthgofitbit.GetUserInfoEndpoint(), "GET"},
+		{"hubspot", oauthgohubspot.GetUserInfoEndpoint(), "GET"},
+		{"zoho", oauthgozoho.GetUserInfoEndpoint(), "GET"},
+		{"docusign", oauthgodocusign.GetUserInfoEndpoint(os.Getenv("DOCUSIGN_DOMAIN")), "GET"},
+		{"boldsign", oauthgoboldsign.GetUserInfoEndpoint(), "GET"},
+		{"zendesk", oauthgozendesk.GetUserInfoEndpoint(os.Getenv("ZENDESK_DOMAIN")), "GET"},
+		{"servicenow", oauthgoservicenow.GetUserInfoEndpoint(os.Getenv("SERVICENOW_DOMAIN")), "GET"},
+		{"workday", oauthgoworkday.GetUserInfoEndpoint(os.Getenv("WORKDAY_TENANT")), "GET"},
+		{"mailchimp", oauthgomailchimp.GetUserInfoEndpoint(), "GET"},
+		{"cognito", oauthgocognito.GetUserInfoEndpoint(os.Getenv("COGNITO_DOMAIN"), os.Getenv("COGNITO_REGION")), "GET"},
 	}
 
 	for _, userInfoProvider := range userInfoProviders {
 		if userInfoProvider.name == "monday" {
-			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgomonday.GetMondayUserInfoHandler()))
+			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgomonday.GetUserInfo()))
 		} else if userInfoProvider.name == "notion" {
-			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgonotion.GetNotionUserInfoHandler("")))
+			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgonotion.GetUserInfo("")))
 		} else if userInfoProvider.name == "intercom" {
-			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgointercom.GetIntercomUserInfoHandler()))
+			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgointercom.GetUserInfo()))
 		} else if userInfoProvider.name == "heroku" {
-			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgoheroku.GetHerokuUserInfoHandler()))
+			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgoheroku.GetUserInfo()))
 		} else if userInfoProvider.name == "apple" {
-			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgoapple.GetAppleUserInfoHandler()))
+			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgoapple.GetUserInfo()))
+		} else if userInfoProvider.name == "hubspot" {
+			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgohubspot.GetUserInfo()))
+		} else if userInfoProvider.name == "zoho" {
+			r.GET("/user/"+userInfoProvider.name, gin.WrapF(oauthgozoho.GetUserInfo(os.Getenv("ZOHO_DOMAIN"))))
 		} else {
 			r.GET("/user/"+userInfoProvider.name, gin.WrapF(handler.UserInfo(userInfoProvider.userInfoEndpoint, userInfoProvider.method)))
 		}

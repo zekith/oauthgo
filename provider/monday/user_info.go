@@ -8,36 +8,6 @@ import (
 	"strings"
 )
 
-// User represents the complete set of user attributes available from Monday.com's "me" query
-type User struct {
-	ID                 string `json:"id"`
-	Name               string `json:"name"`
-	Email              string `json:"email"`
-	IsAdmin            bool   `json:"is_admin"`
-	IsGuest            bool   `json:"is_guest"`
-	IsPending          bool   `json:"is_pending"`
-	IsVerified         bool   `json:"is_verified"`
-	IsViewOnly         bool   `json:"is_view_only"`
-	Enabled            bool   `json:"enabled"`
-	CreatedAt          string `json:"created_at"`
-	JoinDate           string `json:"join_date"`
-	CountryCode        string `json:"country_code"`
-	Location           string `json:"location"`
-	MobilePhone        string `json:"mobile_phone"`
-	Phone              string `json:"phone"`
-	Birthday           string `json:"birthday"`
-	CurrentLanguage    string `json:"current_language"`
-	PhotoOriginal      string `json:"photo_original"`
-	PhotoSmall         string `json:"photo_small"`
-	PhotoThumb         string `json:"photo_thumb"`
-	PhotoThumbSmall    string `json:"photo_thumb_small"`
-	PhotoTiny          string `json:"photo_tiny"`
-	SignUpProductKind  string `json:"sign_up_product_kind"`
-	TimeZoneIdentifier string `json:"time_zone_identifier"`
-	UTCHoursDiff       int    `json:"utc_hours_diff"`
-	URL                string `json:"url"`
-}
-
 // GraphQLRequest represents a Monday.com GraphQL request body
 type GraphQLRequest struct {
 	Query string `json:"query"`
@@ -46,14 +16,14 @@ type GraphQLRequest struct {
 // GraphQLResponse represents the response from Monday.com GraphQL API
 type GraphQLResponse struct {
 	Data struct {
-		Me User `json:"me"`
+		Me map[string]interface{} `json:"me"`
 	} `json:"data"`
 	Errors []map[string]interface{} `json:"errors,omitempty"`
 }
 
-// GetMondayUserInfoHandler returns an http.HandlerFunc that extracts the access token
+// GetUserInfo returns an http.HandlerFunc that extracts the access token
 // from the Authorization header and fetches extended user info from Monday.com
-func GetMondayUserInfoHandler() http.HandlerFunc {
+func GetUserInfo() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract the Authorization header
 		authHeader := r.Header.Get("Authorization")
@@ -99,7 +69,7 @@ func GetMondayUserInfoHandler() http.HandlerFunc {
 		}
 		body, _ := json.Marshal(query)
 
-		// Send request to Monday.com
+		// Send a request to Monday.com
 		req, err := http.NewRequest("POST", "https://api.monday.com/v2", bytes.NewBuffer(body))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("failed to create request: %v", err), http.StatusInternalServerError)

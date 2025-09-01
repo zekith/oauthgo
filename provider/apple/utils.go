@@ -34,7 +34,6 @@ func GenerateClientSecret(teamID, clientID, keyID string, privateKeyPEM []byte) 
 
 // AppleIDClaims represents the ID token claims returned by Apple
 type AppleIDClaims struct {
-	Sub           string `json:"sub"`
 	Email         string `json:"email"`
 	EmailVerified string `json:"email_verified"`
 	AuthTime      int64  `json:"auth_time"`

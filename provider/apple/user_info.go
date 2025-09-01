@@ -15,9 +15,9 @@ type AppleUserResponse struct {
 	AuthTime      int64  `json:"auth_time,omitempty"`
 }
 
-// GetAppleUserInfoHandler extracts and decodes Apple id_token
+// GetUserInfo extracts and decodes Apple id_token
 // from the Authorization header (Bearer id_token) and returns user info.
-func GetAppleUserInfoHandler() http.HandlerFunc {
+func GetUserInfo() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -40,7 +40,7 @@ func GetAppleUserInfoHandler() http.HandlerFunc {
 
 		// Wrap into response
 		resp := AppleUserResponse{
-			Sub:           claims.Sub,
+			Sub:           claims.Subject,
 			Email:         claims.Email,
 			EmailVerified: claims.EmailVerified,
 			Nonce:         claims.Nonce,

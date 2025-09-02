@@ -276,18 +276,6 @@ Please refer [main.go](demo/gin/simple_memory/main.go) for a complete example.
 
 ---
 
-## HTTP Handlers & Routing
-
-**`/auth/{provider}`**
-Redirects the user to the provider’s consent screen using options from your `LoginHandler` closure (scopes, prompt,
-redirect URL, PKCE on/off, extra params).
-
-**`/callback/{provider}`**
-Handles the OAuth2/OIDC callback, validates all defenses, stores the session, and finally redirects the user to your
-`RedirectURL` (e.g., `/me`).
-
----
-
 ## Sessions & Cookies
 
 - **Memory**: Great for local development; not shared across instances.

@@ -16,7 +16,7 @@ import (
 	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
 	oauthgostore "github.com/zekith/oauthgo/core/store"
 	oauthgotypes "github.com/zekith/oauthgo/core/types"
-	oauthgoslack "github.com/zekith/oauthgo/provider/slack"
+	oauthgogoogle "github.com/zekith/oauthgo/provider/google"
 )
 
 const (
@@ -32,28 +32,28 @@ func main() {
 	handler := oauthgo.HandlerFacade{}
 
 	r := gin.Default()
-	providerName := "slack"
+	providerName := "google"
 
-	// Create and register the Slack OAuth2 provider
-	provider, err := oauthgoslack.NewWithOptions(
+	// Create and register the Google OAuth2 provider
+	provider, err := oauthgogoogle.NewWithOptions(
 		&oauthgotypes.ProviderConfig{
-			ClientID:     os.Getenv("SLACK_KEY"),
-			ClientSecret: os.Getenv("SLACK_SECRET"),
+			ClientID:     os.Getenv("GOOGLE_KEY"),
+			ClientSecret: os.Getenv("GOOGLE_SECRET"),
 			OAuth2ODICOptions: &oauthgotypes.OAuth2OIDCOptions{
-				//Mode:   pointer.To(oauthgotypes.OIDC), // Override defaults if needed
+				// Mode:   pointer.To(oauthgotypes.OIDC), // Override defaults if needed
 				OAuth2: &oauthgotypes.OAuth2Options{
-					//Override defaults if needed
+					// Override defaults if needed
 				},
 			},
 		})
 	if err != nil {
-		log.Fatal("failed to create slack provider: ", err)
+		log.Fatal("failed to create google provider: ", err)
 	}
 	handler.Register(providerName, provider)
 
 	r.GET(fmt.Sprintf("/auth/%s", providerName), gin.WrapF(
 		handler.Login(providerName, oauthgo.AuthURLOptions{
-			RedirectURL: os.Getenv("OAUTHGO_BASE_URL") + "/callback/slack", // Your callback URL
+			RedirectURL: "http://localhost:3000/callback/google", // Your callback URL
 		})),
 	)
 
@@ -88,15 +88,15 @@ func main() {
 }
 
 func initDependencies() {
-
 	deps := &authogodeps.OAuthGoDeps{
-		ReplayProtector: oauthgoreplay.NewMemoryReplayProtector(),
-		SessionStore:    oauthgostore.NewMemorySessionStore(),
+		ReplayProtector: oauthgoreplay.NewMemoryReplayProtector(), // Use a redis replay protector in production
+		SessionStore:    oauthgostore.NewMemorySessionStore(),     // Use a redis session store in production
+		//SessionCookieManager: oauthgocookie.GetDefaultHMACCookieSessionManager(),
 		SessionCookieManager: &oauthgocookie.HMACSessionCookieManager{
 			Name:       sessionCookieName,
 			Secret:     []byte(uuid.New()),
 			TTL:        time.Hour * 24 * sessionTTLDays,
-			Secure:     false,
+			Secure:     false, // Set to true in production
 			Domain:     "",
 			HttpOnly:   true,
 			CookiePath: "/",

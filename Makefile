@@ -1,4 +1,4 @@
-.PHONY: tidy lint test build up down
+.PHONY: tidy lint test build
 
 tidy:
 	go mod tidy
@@ -11,9 +11,3 @@ test:
 
 build:
 	go build ./...
-
-up:
-	docker compose up -d redis
-
-down:
-	docker compose down

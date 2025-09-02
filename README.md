@@ -15,12 +15,10 @@
 - [HTTP Handlers & Routing](#http-handlers--routing)
 - [Sessions & Cookies](#sessions--cookies)
 - [Configuration](#configuration)
-- [End-to-End Example](#end-to-end-example)
 - [Adding a New Provider](#adding-a-new-provider)
 - [Security Checklist](#security-checklist)
 - [Troubleshooting & FAQ](#troubleshooting--faq)
 - [Development](#development)
-- [Roadmap](#roadmap)
 - [License](#license)
 
 ---
@@ -44,6 +42,7 @@
 - **State & nonce** generation and verification
 - **UserInfo** retrieval for OIDC and OAuth2‑only providers (via REST) when applicable
 - **Session storage** abstractions (swap memory ↔ Redis in seconds)
+- Supporting 50+ providers out-of-box
 - Small, focused surface area; easy to extend for new providers
 
 ---
@@ -54,86 +53,124 @@
 go get github.com/zekith/oauthgo
 ```
 
-Optionally add Redis (for production‑ready shared sessions) in your app.
+Optionally, add Redis (for production‑ready shared sessions) in your app.
 
 ---
 
 ## Quick Start
 
-Minimal server with Google + Microsoft sign‑in using Authorization Code + PKCE:
+Minimal server with Google OIDC
 
 ```go
 package main
 
 import (
-    "log"
-    "net/http"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
 
-    oauthcookie "github.com/zekith/oauthgo/core/cookie"
-    oauthstore  "github.com/zekith/oauthgo/core/store"
-    coreprov    "github.com/zekith/oauthgo/core/provider"
+	"github.com/gin-gonic/gin"
+	"github.com/pborman/uuid"
+	oauthgo "github.com/zekith/oauthgo/api"
+	oauthgocookie "github.com/zekith/oauthgo/core/cookie"
+	authogodeps "github.com/zekith/oauthgo/core/deps"
+	oauthgoreplay "github.com/zekith/oauthgo/core/replay"
+	oauthgostore "github.com/zekith/oauthgo/core/store"
+	oauthgotypes "github.com/zekith/oauthgo/core/types"
+	oauthgogoogle "github.com/zekith/oauthgo/provider/google"
+)
 
-    provfactory "github.com/zekith/oauthgo/core/provider/factory"
-    oidcprov    "github.com/zekith/oauthgo/core/provider/oauth2oidc"
-    otypes      "github.com/zekith/oauthgo/core/types"
+const (
+	serverPort        = ":3000"
+	sessionCookieName = "oauthgo_session"
+	sessionTTLDays    = 30
 )
 
 func main() {
-    // 1) Provider manager
-    pm := coreprov.NewProviderManager()
+	// Initialize the dependencies using Redis for session store and replay protection
+	initDependencies()
 
-    // Google preset (explicit values shown for clarity)
-    google := &otypes.OAuth2OIDCOptions{
-        Name: otypes.String("google"),
-        Mode: otypes.ToMode(otypes.OIDC),
-        OAuth2: &otypes.OAuth2Options{
-            AuthURL:  otypes.String("https://accounts.google.com/o/oauth2/v2/auth"),
-            TokenURL: otypes.String("https://oauth2.googleapis.com/token"),
-            Scopes:   otypes.Strings([]string{"openid", "email", "profile"}),
-            UsePKCE:  otypes.Bool(true),
-        },
-        OIDC: &otypes.OIDCOptions{
-            Issuer:      otypes.String("https://accounts.google.com"),
-            UserInfoURL: otypes.String("https://openidconnect.googleapis.com/v1/userinfo"),
-        },
-    }
+	handler := oauthgo.HandlerFacade{}
 
-    // Microsoft (multi‑tenant). See “Adding a New Provider” for a helper.
-    msft := buildMicrosoftDefaults("common")
+	r := gin.Default()
+	providerName := "google"
 
-    pm.MustRegister("google", oidcprov.New(google))
-    pm.MustRegister("microsoft", oidcprov.New(msft))
+	// Create and register the Google OAuth2 provider
+	provider, err := oauthgogoogle.NewWithOptions(
+		&oauthgotypes.ProviderConfig{
+			ClientID:     os.Getenv("GOOGLE_KEY"),
+			ClientSecret: os.Getenv("GOOGLE_SECRET"),
+			OAuth2ODICOptions: &oauthgotypes.OAuth2OIDCOptions{
+				// Mode:   pointer.To(oauthgotypes.OIDC), // Override defaults if needed
+				OAuth2: &oauthgotypes.OAuth2Options{
+					// Override defaults if needed
+				},
+			},
+		})
+	if err != nil {
+		log.Fatal("failed to create google provider: ", err)
+	}
+	handler.Register(providerName, provider)
 
-    // 2) Sessions & cookies
-    cookieMgr := oauthcookie.NewCookieSessionManager(oauthcookie.Options{
-        CookieName: "oauthgo_session",
-        Secure:     true,
-        HTTPOnly:   true,
-        SameSite:   http.SameSiteLaxMode,
-    })
-    sessStore := oauthstore.NewMemoryStore() // swap with Redis in prod
+	r.GET(fmt.Sprintf("/auth/%s", providerName), gin.WrapF(
+		handler.Login(providerName, oauthgo.AuthURLOptions{
+			RedirectURL: "http://localhost:3000/callback/google", // Your callback URL
+		})),
+	)
 
-    // 3) Routes: /auth/{provider} and /callback/{provider}
-    http.HandleFunc("/auth/", pm.LoginHandler(func(r *http.Request) coreprov.AuthOptions {
-        return coreprov.AuthOptions{
-            RedirectURL: defaultRedirect(r), // where to send the user after login
-            UsePKCE:     true,
-            Prompt:      "select_account",
-            ExtraAuth:   map[string]string{"access_type": "offline"}, // ask for refresh token if supported
-        }
-    }))
+	r.GET(fmt.Sprintf("/callback/%s", providerName), gin.WrapF(
+		handler.Callback(providerName, oauthgo.CallbackOptions{
+			SetLoginCookie: true, // Set to true to enable session cookie
+			SetSIDCookie:   true, // Set to true to enable session ID cookie
+			StoreSession:   true, // Set to true to store a session in the session store
+			OnError: func(w http.ResponseWriter, r *http.Request, err error) {
+				// Handle the error appropriately
+				http.Error(w, "oidc auto-callback failed: "+err.Error(), http.StatusInternalServerError)
+			},
+			OnSuccess: func(w http.ResponseWriter, r *http.Request, res *oauthgo.CallbackResult) {
+				// For demo purposes, we return the user info and session data as JSON
+				// In production; you might want to redirect the user to a different page
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"status":   "ok",
+					"provider": res.ProviderName,
+					"user":     res.User,
+					"sid":      res.SID,
+					"session":  res.Session,
+				})
+			},
+		})),
+	)
 
-    http.HandleFunc("/callback/", pm.CallbackHandler(cookieMgr, sessStore))
-
-    http.HandleFunc("/me", func(w http.ResponseWriter, r *http.Request) {
-        // Load user info / claims from session and render response
-        w.WriteHeader(http.StatusOK)
-        _, _ = w.Write([]byte("ok"))
-    })
-
-    log.Println("listening on :8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Printf("listening on %s", serverPort)
+	if err := r.Run(serverPort); err != nil {
+		log.Fatal(err)
+	}
 }
+
+func initDependencies() {
+	deps := &authogodeps.OAuthGoDeps{
+		ReplayProtector: oauthgoreplay.NewMemoryReplayProtector(), // Use a redis replay protector in production
+		SessionStore:    oauthgostore.NewMemorySessionStore(),     // Use a redis session store in production
+		//SessionCookieManager: oauthgocookie.GetDefaultHMACCookieSessionManager(),
+		SessionCookieManager: &oauthgocookie.HMACSessionCookieManager{
+			Name:       sessionCookieName,
+			Secret:     []byte(uuid.New()),
+			TTL:        time.Hour * 24 * sessionTTLDays,
+			Secure:     false, // Set to true in production
+			Domain:     "",
+			HttpOnly:   true,
+			CookiePath: "/",
+			SameSite:   http.SameSiteLaxMode,
+		},
+	}
+	authogodeps.Init(deps)
+}
+
+
 ```
 
 ---
@@ -168,7 +205,7 @@ A `SessionStore` (memory/Redis) persists auth/session data while `CookieSessionM
 ├── go.mod
 ├── go.sum
 ├── Makefile
-└── docker-compose.yml
+└── README.md
 ```
 
 > Exact contents may evolve, but the top‑level layout follows this structure.
@@ -177,10 +214,10 @@ A `SessionStore` (memory/Redis) persists auth/session data while `CookieSessionM
 
 ## HTTP Handlers & Routing
 
-**`/auth/{provider}`**  
+**`/auth/{provider}`**
 Redirects the user to the provider’s consent screen using options from your `LoginHandler` closure (scopes, prompt, redirect URL, PKCE on/off, extra params).
 
-**`/callback/{provider}`**  
+**`/callback/{provider}`**
 Handles the OAuth2/OIDC callback, validates all defenses, stores the session, and finally redirects the user to your `RedirectURL` (e.g., `/me`).
 
 ---
@@ -199,37 +236,9 @@ Declare client credentials and callback URLs via environment variables or your c
 
 ```env
 # Google
-OAUTHGO_GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
-OAUTHGO_GOOGLE_CLIENT_SECRET=super-secret
-OAUTHGO_GOOGLE_REDIRECT_URL=http://localhost:8080/callback/google
+GOOGLE_KEY=xxxx.apps.googleusercontent.com
+GOOGLE_SECRET=super-secret
 
-# Microsoft (multi‑tenant)
-OAUTHGO_MSFT_CLIENT_ID=…
-OAUTHGO_MSFT_CLIENT_SECRET=…
-OAUTHGO_MSFT_TENANT=common
-OAUTHGO_MSFT_REDIRECT_URL=http://localhost:8080/callback/microsoft
-
-# Redis (optional)
-REDIS_URL=redis://localhost:6379
-```
-
----
-
-## End-to-End Example
-
-Mount the two core handlers and expose a protected `GET /me` endpoint. Tune per‑request parameters in the `AuthOptions` closure.
-
-```go
-http.HandleFunc("/auth/", pm.LoginHandler(func(r *http.Request) coreprov.AuthOptions {
-    return coreprov.AuthOptions{
-        RedirectURL: defaultRedirect(r),
-        UsePKCE:     true,
-        Prompt:      "select_account",
-        ExtraAuth:   map[string]string{"access_type": "offline"},
-    }
-}))
-
-http.HandleFunc("/callback/", pm.CallbackHandler(cookieMgr, sessStore))
 ```
 
 ---
@@ -239,46 +248,47 @@ http.HandleFunc("/callback/", pm.CallbackHandler(cookieMgr, sessStore))
 Provider presets are plain Go code returning `*otypes.OAuth2OIDCOptions`. For example, **Microsoft Entra ID (Azure AD)** across tenants:
 
 ```go
-package oauthgomicrosoft
+package oauthgogoogle
 
 import (
-    "fmt"
-
-    "github.com/AlekSi/pointer"
-    coreprov    "github.com/zekith/oauthgo/core/provider"
-    provfactory "github.com/zekith/oauthgo/core/provider/factory"
-    oidcprov    "github.com/zekith/oauthgo/core/provider/oauth2oidc"
-    otypes      "github.com/zekith/oauthgo/core/types"
+	"github.com/AlekSi/pointer"
+	"github.com/zekith/oauthgo/core/provider/factory"
+	coreprov "github.com/zekith/oauthgo/core/provider/oauth2oidc"
+	"github.com/zekith/oauthgo/core/types"
 )
 
-// buildMicrosoftDefaults builds the Microsoft provider config for a given tenant.
-// tenant can be "common", "organizations", "consumers", or a specific tenant ID/domain.
-func buildMicrosoftDefaults(tenant string) *otypes.OAuth2OIDCOptions {
-    if tenant == "" { tenant = "common" }
-    base := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0", tenant)
+var googleDefaults = &oauthgotypes.OAuth2OIDCOptions{
+	Name: pointer.ToString("google"),
+	Mode: pointer.To(oauthgotypes.OIDC), // Google strongly recommends OIDC
 
-    return &otypes.OAuth2OIDCOptions{
-        Name: pointer.ToString("microsoft"),
-        Mode: pointer.To(otypes.OIDC),
-        OAuth2: &otypes.OAuth2Options{
-            AuthURL:  pointer.ToString(base + "/authorize"),
-            TokenURL: pointer.ToString(base + "/token"),
-            Scopes:   pointer.To([]string{"openid", "email", "profile", "offline_access"}),
-            UsePKCE:  pointer.To(true),
-        },
-        OIDC: &otypes.OIDCOptions{
-            Issuer:      pointer.ToString(fmt.Sprintf("https://login.microsoftonline.com/%s/v2.0", tenant)),
-            JWKSURL:     pointer.ToString(fmt.Sprintf("https://login.microsoftonline.com/%s/discovery/v2.0/keys", tenant)),
-            UserInfoURL: pointer.ToString("https://graph.microsoft.com/oidc/userinfo"),
-        },
-    }
+	OAuth2: &oauthgotypes.OAuth2Options{
+		AuthURL:       pointer.ToString("https://accounts.google.com/o/oauth2/v2/auth"),
+		TokenURL:      pointer.ToString("https://oauth2.googleapis.com/token"),
+		RevocationURL: pointer.ToString("https://oauth2.googleapis.com/revoke"),
+		Scopes:        pointer.To([]string{"email"}), // Applicable for OAuth2-only mode will be overridden by OIDC scopes if OIDC is enabled
+		ExtraAuth: pointer.To(map[string]string{
+			"access_type": "offline",
+		}),
+	},
+
+	OIDC: &oauthgotypes.OIDCOptions{
+		Issuer:      pointer.ToString("https://accounts.google.com"),
+		Scopes:      pointer.To([]string{"openid", "profile", "email"}), // Applicable for OIDC mode
+		UserInfoURL: pointer.ToString("https://openidconnect.googleapis.com/v1/userinfo"),
+	},
 }
 
-func init() {
-    provfactory.MustRegister("microsoft", func() coreprov.Provider {
-        return oidcprov.New(buildMicrosoftDefaults("common"))
-    })
+func NewWithOptions(providerConfig *oauthgotypes.ProviderConfig) (coreprov.OAuthO2IDCProvider, error) {
+	return oauthgofactory.NewOAuth2OIDCProvider(providerConfig, googleDefaults)
 }
+
+func GetUserInfoEndpoint() string {
+	if googleDefaults.OIDC != nil && googleDefaults.OIDC.UserInfoURL != nil {
+		return *googleDefaults.OIDC.UserInfoURL
+	}
+	return ""
+}
+
 ```
 
 Notes:
@@ -291,7 +301,7 @@ Notes:
 
 - [ ] **HTTPS only** in production; never transmit auth cookies over plaintext.
 - [ ] **Validate state and (if OIDC) nonce**; refuse callbacks with mismatches.
-- [ ] **Enable PKCE** for public clients; many IdPs require it.
+- [ ] **Enable PKCE** for public clients; many providers support it.
 - [ ] **Restrict redirect URIs** to a strict allowlist; reject open redirects.
 - [ ] **Set secure cookie flags**: `Secure`, `HttpOnly`, `SameSite=Lax/Strict`, and sensible `MaxAge`.
 - [ ] **Scope minimally**; request only what you need.
@@ -302,16 +312,16 @@ Notes:
 
 ## Troubleshooting & FAQ
 
-**“Something went wrong” after consent**  
+**“Something went wrong” after consent**
 Ensure the callback URL you registered with the provider **exactly** matches the one your server exposes (scheme/host/port/path). Inspect state/nonce verification logs.
 
-**“state parameter was modified”**  
+**“state parameter was modified”**
 The stored state doesn’t match the callback. Clear cookies, ensure a centralized session store (e.g., Redis) across instances, and verify that nothing overwrites the state between `/auth` and `/callback`.
 
-**OIDC vs OAuth2‑only**  
+**OIDC vs OAuth2‑only**
 If a provider doesn’t support OIDC (no ID token), set `Mode = OAuth2Only`. You can still fetch user profile data via the provider’s REST API when available.
 
-**Refresh tokens**  
+**Refresh tokens**
 Some providers (e.g., LinkedIn, GitHub in certain flows) do **not** return refresh tokens for typical web apps. Use short‑lived access tokens plus re‑auth, or provider‑specific grants if you need long‑lived access.
 
 ---
@@ -327,15 +337,6 @@ go vet ./...
 ```
 
 Project structure encourages adding providers under `/provider/...` and keeping protocol‑specific logic under `/core/...`.
-
----
-
-## Roadmap
-
-- Additional provider presets (Salesforce, Apple, Slack, Zoom, etc.)
-- Example apps for popular HTTP routers (chi, gin, fiber)
-- JWS/JWK utilities for custom token validation paths
-- Convenience middleware for CSRF origin checking
 
 ---
 

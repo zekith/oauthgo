@@ -18,6 +18,7 @@
 - [Adding a New Provider](#adding-a-new-provider)
 - [Security Checklist](#security-checklist)
 - [Troubleshooting & FAQ](#troubleshooting--faq)
+- [Supported Providers](#supported-providers)
 - [Development](#development)
 - [License](#license)
 

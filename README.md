@@ -1,7 +1,7 @@
 
 # oauthgo
 
-*A lightweight, extensible Go library for implementing OAuth2 and OpenID Connect (OIDC) with major identity providers. Built for clarity, composability, and production‑grade security (PKCE, state/nonce, replay protection) with pluggable session stores.*
+*A lightweight, extensible Go library for OAuth2 and OpenID Connect (OIDC) with built-in major identity providers — built for clarity, composability, production-grade security (PKCE, state/nonce, replay protection), and pluggable session stores.*
 
 > Repository: `github.com/zekith/oauthgo`
 

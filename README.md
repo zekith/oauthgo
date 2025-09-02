@@ -411,6 +411,7 @@ Please refer to this example for sample code: [multiproviders](demo/gin/multipro
 Each provider can be configured via environment variables or your config system and tested using the demo app by hitting
 `/auth/{provider}` and `/callback/{provider}`. The demo app also serves as a reference implementation for your own app.
 You need to register your own OAuth2/OIDC client credentials and callback URLs.
+
 ---
 
 | Provider         | OAuth2 Support | OIDC Support | Refresh Tokens | Token Revocation | Remarks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |

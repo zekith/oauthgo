@@ -16,7 +16,7 @@ import (
 // - Scopes must be enabled in the Kakao Developer Console.
 var kakaoDefaults = &oauthgotypes.OAuth2OIDCOptions{
 	Name: pointer.ToString("kakao"),
-	Mode: pointer.To(oauthgotypes.OAuth2Only), // Kakao supports OAuth2 and OIDC
+	Mode: pointer.To(oauthgotypes.OIDC), // Kakao supports OAuth2 and OIDC
 
 	OAuth2: &oauthgotypes.OAuth2Options{
 		AuthURL:       pointer.ToString("https://kauth.kakao.com/oauth/authorize"),

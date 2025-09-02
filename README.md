@@ -49,7 +49,7 @@ state/nonce, replay protection), and pluggable session stores.*
 - **State & nonce** generation and verification
 - **UserInfo** retrieval for OIDC and OAuth2‑only providers (via REST) when applicable
 - **Session storage** abstractions (swap memory ↔ Redis in seconds)
-- Supporting 50+ providers out-of-box
+- Supporting [50+ providers](#supported-providers) out-of-box
 - Small, focused surface area; easy to extend for new providers
 
 ---

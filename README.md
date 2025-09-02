@@ -13,7 +13,7 @@ oauthgo simplifies authentication flows with built-in support for major identity
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
 - [Directory Layout](#directory-layout)
-- [HTTP Handlers & Routing](#http-handlers--routing)
+- [HTTP Handlers & Routing](#handler-facade)
 - [Sessions & Cookies](#sessions--cookies)
 - [Configuration](#configuration)
 - [Adding a New Provider](#adding-a-new-provider)

@@ -186,16 +186,34 @@ func initDependencies() {
 
 ### Providers & Options
 
-Each provider is described by `OAuth2OIDCOptions`:
+Each provider is described using the `OAuth2OIDCOptions` struct, which includes the following key fields:
 
-- `Mode`: `OIDC` or `OAuth2Only`
-- `OAuth2`: authorization, token, (optional revocation) endpoints, scopes, PKCE flags
-- `OIDC`: issuer, (optional JWKS URL), userinfo URL
-- In most cases, you need to override scopes only; URLs are preset but can be overridden as needed. You can override any
-  of the options in `OAuth2` and `OIDC` options. Non-overridable options are set by the provider presets.
-- If `Mode = OIDC`, OIDC scopes are used for authorization and token requests.
-- Please make sure to override all the required scopes in `OAuth2` and `OIDC` options in your provider presets as entire
-  scopes are overwritten.
+- **`Mode`**:  
+  Specifies the authentication mode — either:
+    - `OIDC` (OpenID Connect) or
+    - `OAuth2Only` (for providers that don't support OIDC)
+
+- **`OAuth2`**:  
+  Contains OAuth2-specific configuration including:
+    - Authorization and token endpoint URLs
+    - Optional revocation endpoint
+    - Scopes
+    - PKCE (Proof Key for Code Exchange) flags
+
+- **`OIDC`**:  
+  Contains OIDC-specific configuration:
+    - Issuer URL
+    - Optional JWKS (JSON Web Key Set) URL
+    - UserInfo endpoint URL
+
+---
+
+#### Notes:
+
+- In most cases, you only need to **override scopes**. Endpoint URLs are preset in provider defaults but **can be overridden**.
+- You can override **any field** in `OAuth2` and `OIDC`, except for a few **non-overridable fields** that are hardcoded in provider presets.
+- If `Mode = OIDC`, the **OIDC scopes** are used for authorization and token requests.
+- When overriding scopes via provider presets, **ensure that all required scopes are explicitly set**, as the override **completely replaces** the default scopes.
 
 ### Handler Facade
 

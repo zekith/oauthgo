@@ -1,8 +1,7 @@
 # oauthgo
 
-*A lightweight, extensible Go library for OAuth2 and OpenID Connect (OIDC) with built-in major
-identity [providers](#supported-providers) — built for clarity, composability, production-grade security (PKCE,
-state/nonce, replay protection), and pluggable session stores.*
+*A lightweight and extensible Go library for OAuth2 and OpenID Connect (OIDC), designed for clarity, modularity, and production-grade security.
+oauthgo simplifies authentication flows with built-in support for major identity [providers](#supported-providers), plug-and-play session and cookie stores, and robust defenses including PKCE, state/nonce validation, and replay protection — all while remaining unopinionated and compatible with any HTTP router or framework.*
 
 > Repository: `github.com/zekith/oauthgo`
 
@@ -34,6 +33,9 @@ state/nonce, replay protection), and pluggable session stores.*
   OIDC.
 - **Provider presets** (e.g., Google, Microsoft Entra ID, LinkedIn, Facebook, GitHub, SAP Concur, etc.) you can use
   as‑is or customize.
+- **Add a new provider** Just register provider endpoints and scopes with core — no need to fork or modify the
+  library.
+- **Callback Flexibility**: Configure callback options and result backed by a solid foundation.
 - **Pluggable sessions** (in‑memory or Redis) that you can swap without touching handler wiring.
 - **Pluggable cookie manager** that you can swap without touching handler wiring.
 - **Defense‑in‑depth**: state/nonce validation, PKCE, replay protection, and strict redirect handling.

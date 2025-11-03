@@ -108,6 +108,13 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 		return "", "", err
 	}
 
+	//set request query params
+	if r.URL.Query() != nil {
+		for k, v := range r.URL.Query() {
+			params = append(params, oauth2.SetAuthURLParam(k, strings.Join(v, ",")))
+		}
+	}
+
 	codeURL := o.AuthCodeURL(opaque, params...)
 
 	log.Println("auth url: %s", codeURL)

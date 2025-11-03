@@ -28,4 +28,5 @@ type CallbackResult struct {
 	User         *User
 	Session      *SessionData
 	SID          string
+	ReturnTo     string
 }

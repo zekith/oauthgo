@@ -6,6 +6,7 @@ import (
 
 	oauthgoauth2 "github.com/zekith/oauthgo/core/provider/oauth2"
 	oauthgooidc "github.com/zekith/oauthgo/core/provider/oidc"
+	oauthgostate "github.com/zekith/oauthgo/core/state"
 )
 
 // NewOAuth2OIDCFacade creates a new OAuth2OIDCFacade.
@@ -34,6 +35,11 @@ func (f *OAuth2OIDCFacade) Refresh(ctx context.Context, refreshToken string) (*o
 // Revoke revokes a token.
 func (f *OAuth2OIDCFacade) Revoke(ctx context.Context, token string) error {
 	return f.oAuth2Provider.Revoke(ctx, token)
+}
+
+// GetState Get state from opaque state
+func (f *OAuth2OIDCFacade) GetState(ctx context.Context, opaqueState string) (*oauthgostate.StatePayload, error) {
+	return f.oAuth2Provider.GetState(ctx, opaqueState)
 }
 
 // UserInfo retrieves user information.

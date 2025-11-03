@@ -93,6 +93,16 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 		o.Scopes = append([]string{}, opts.Scopes...)
 	}
 
+	//set return_to from query params
+	if r.URL.Query() != nil {
+		if r.URL.Query().Get("redirect_uri") != "" {
+			opts.ReturnTo = r.URL.Query().Get("redirect_uri")
+		}
+		if r.URL.Query().Get("rd") != "" {
+			opts.ReturnTo = r.URL.Query().Get("rd")
+		}
+	}
+
 	statePayload, err := p.createStatePayload(opts)
 	if err != nil {
 		return "", "", err
@@ -106,13 +116,6 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 	params, err := p.buildAuthParams(opts, statePayload.PKCE)
 	if err != nil {
 		return "", "", err
-	}
-
-	//set request query params
-	if r.URL.Query() != nil {
-		for k, v := range r.URL.Query() {
-			params = append(params, oauth2.SetAuthURLParam(k, strings.Join(v, ",")))
-		}
 	}
 
 	codeURL := o.AuthCodeURL(opaque, params...)
@@ -145,6 +148,7 @@ func (p *StandardOAuth2Provider) createStatePayload(opts AuthURLOptions) (oauthg
 		Provider: p.name,
 		Nonce:    nonce,
 		CSRF:     csrf,
+		ReturnTo: opts.ReturnTo,
 		PKCE:     pkce,
 		Redirect: opts.RedirectURL,
 		IssuedAt: time.Now().Unix(),
@@ -316,6 +320,11 @@ func (p *StandardOAuth2Provider) Revoke(ctx context.Context, token string) error
 	}
 
 	return p.handleRevocationResponse(res)
+}
+
+// GetState implements the OAuth2Provider interface method and gets the state.
+func (p *StandardOAuth2Provider) GetState(ctx context.Context, opaqueState string) (*oauthgostate.StatePayload, error) {
+	return p.validateAndDecodeState(opaqueState)
 }
 
 // buildRevocationForm builds the revocation form.

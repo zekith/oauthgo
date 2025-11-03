@@ -11,6 +11,7 @@ import (
 	oauthgoauth2 "github.com/zekith/oauthgo/core/provider/oauth2"
 	"github.com/zekith/oauthgo/core/provider/oauth2oidc"
 	oauthgooidc "github.com/zekith/oauthgo/core/provider/oidc"
+	oauthgostate "github.com/zekith/oauthgo/core/state"
 	oauthgostore "github.com/zekith/oauthgo/core/store"
 	oauthgoutils "github.com/zekith/oauthgo/core/utils"
 )
@@ -67,6 +68,12 @@ func (m *ProviderManager) Callback(
 		return nil, err
 	}
 
+	statePayload, err := m.getState(r, provider)
+
+	if err != nil {
+		return nil, err
+	}
+
 	oAuth2Session, err := m.exchangeCodeForToken(r, provider)
 	if err != nil {
 		return nil, err
@@ -87,6 +94,7 @@ func (m *ProviderManager) Callback(
 	}
 
 	return &CallbackResult{
+		ReturnTo:     statePayload.ReturnTo,
 		ProviderName: providerName,
 		User:         user,
 		Session:      oAuth2Session,
@@ -199,6 +207,11 @@ func (m *ProviderManager) exchangeCodeForToken(r *http.Request, provider oauth2o
 	code := r.FormValue("code")
 	state := r.FormValue("state")
 	return provider.Exchange(r.Context(), r, code, state)
+}
+
+func (m *ProviderManager) getState(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider) (*oauthgostate.StatePayload, error) {
+	state := r.FormValue("state")
+	return provider.GetState(r.Context(), state)
 }
 
 func (m *ProviderManager) fetchUserInfo(r *http.Request, provider oauth2oidc.OAuthO2IDCProvider, session *SessionData) (*oauthgooidc.User, error) {

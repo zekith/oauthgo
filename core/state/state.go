@@ -36,6 +36,8 @@ type StatePayload struct {
 	// Extras is a map of additional data that can be included in the state.
 	// This can be used to pass custom parameters or data that the application needs.
 	Extras map[string]string `json:"extras,omitempty"`
+	// ReturnTo is the dynamic url to redirect the user to after authentication.
+	ReturnTo string
 }
 
 // StateCodec is a state token encoder/decoder.

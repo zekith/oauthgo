@@ -6,6 +6,7 @@ import (
 
 	"github.com/zekith/oauthgo/core/provider/oauth2"
 	"github.com/zekith/oauthgo/core/provider/oidc"
+	oauthgostate "github.com/zekith/oauthgo/core/state"
 )
 
 // OAuthO2IDCProvider represents an OAuth2 provider with optional OIDC capabilities.
@@ -20,6 +21,10 @@ type OAuthO2IDCProvider interface {
 	Refresh(ctx context.Context, refreshToken string) (*oauthgoauth2.OAuth2Session, error)
 	// Revoke revokes a token.
 	Revoke(ctx context.Context, token string) error
+
+	// GetState Get state from opaque state
+	GetState(ctx context.Context, opaqueState string) (*oauthgostate.StatePayload, error)
+
 	// UserInfo retrieves user information.
 	UserInfo(ctx context.Context, accessToken, idToken string) (*oauthgooidc.User, error)
 	// VerifyIDToken verifies the JWT ID token.

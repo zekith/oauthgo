@@ -4,11 +4,14 @@ import (
 	"context"
 	"net/http"
 	"time"
+
+	oauthgostate "github.com/zekith/oauthgo/core/state"
 )
 
 // AuthURLOptions are the options for generating an authentication URL.
 type AuthURLOptions struct {
 	RedirectURL string            // Redirect URL after authentication
+	ReturnTo    string            // ReturnTo URL after authentication
 	Scopes      []string          // Scopes to request
 	Prompt      string            // Prompt to use
 	LoginHint   string            // Login hint to use
@@ -38,4 +41,6 @@ type OAuth2Provider interface {
 	Refresh(ctx context.Context, refreshToken string) (*OAuth2Session, error)
 	// Revoke revokes a token.
 	Revoke(ctx context.Context, token string) error
+	// GetState Get state from opaque state
+	GetState(ctx context.Context, opaqueState string) (*oauthgostate.StatePayload, error)
 }

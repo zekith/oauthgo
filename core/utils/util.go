@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -64,4 +65,42 @@ func FirstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+// StringValue converts any to string.
+func StringValue(v any) string {
+	if v == nil {
+		return ""
+	}
+	switch t := v.(type) {
+	case string:
+		return t
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+// Int64Value converts common numeric JSON forms to int64.
+func Int64Value(v any) (int64, bool) {
+	switch t := v.(type) {
+	case int:
+		return int64(t), true
+	case int32:
+		return int64(t), true
+	case int64:
+		return t, true
+	case float32:
+		return int64(t), true
+	case float64:
+		return int64(t), true
+	case json.Number:
+		i, err := t.Int64()
+		return i, err == nil
+	case string:
+		n := json.Number(t)
+		i, err := n.Int64()
+		return i, err == nil
+	default:
+		return 0, false
+	}
 }

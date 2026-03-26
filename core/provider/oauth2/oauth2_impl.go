@@ -2,6 +2,7 @@ package oauthgoauth2
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -30,6 +31,13 @@ type OAuth2Config struct {
 	UsePKCE       bool              // controls whether to use PKCE (Proof Key for Code Exchange) in the OAuth2 flow
 }
 
+// TokenExchangeResult contains the parsed token plus raw token response metadata.
+type TokenExchangeResult struct {
+	Token      *oauth2.Token
+	RawBody    map[string]any
+	RawHeaders map[string]string
+}
+
 // StandardOAuth2Provider is an OAuth2 provider that implements the OAuth2Provider interface.
 type StandardOAuth2Provider struct {
 	name           string
@@ -42,7 +50,6 @@ func NewStandardOAuth2Provider(
 	name string,
 	cfg OAuth2Config,
 ) *StandardOAuth2Provider {
-
 	scopes := getScopesWithDefaults(cfg.Scopes)
 	oauth2Config := createOAuth2Config(cfg, scopes)
 
@@ -93,7 +100,7 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 		o.Scopes = append([]string{}, opts.Scopes...)
 	}
 
-	//set return_to from query params
+	// set return_to from query params
 	if r.URL.Query() != nil {
 		if r.URL.Query().Get("redirect_uri") != "" {
 			opts.ReturnTo = r.URL.Query().Get("redirect_uri")
@@ -120,7 +127,8 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 
 	codeURL := o.AuthCodeURL(opaque, params...)
 
-	log.Println("auth url: %s", codeURL)
+	log.Printf("auth url: %s", codeURL)
+
 	return codeURL, opaque, nil
 }
 
@@ -201,12 +209,12 @@ func (p *StandardOAuth2Provider) Exchange(ctx context.Context, r *http.Request, 
 		return nil, err
 	}
 
-	tok, err := p.exchangeCodeForToken(ctx, code, sp.Redirect, opts)
+	res, err := p.exchangeCodeForToken(ctx, code, sp.Redirect, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return p.createSessionFromToken(tok), nil
+	return p.createSessionFromToken(ctx, res), nil
 }
 
 // validateAndDecodeState validates and decodes the state.
@@ -235,71 +243,236 @@ func (p *StandardOAuth2Provider) checkReplayProtection(ctx context.Context, opaq
 }
 
 // buildTokenExchangeOptions builds the token exchange options.
-func (p *StandardOAuth2Provider) buildTokenExchangeOptions(sp *oauthgostate.StatePayload) ([]oauth2.AuthCodeOption, error) {
-	var opts []oauth2.AuthCodeOption
+func (p *StandardOAuth2Provider) buildTokenExchangeOptions(sp *oauthgostate.StatePayload) (map[string]string, error) {
+	opts := map[string]string{}
 
 	if sp.PKCE != nil {
-		opts = append(opts, oauth2.SetAuthURLParam("code_verifier", sp.PKCE.Verifier))
+		opts["code_verifier"] = sp.PKCE.Verifier
 	}
 
 	for k, v := range p.cfg.ExtraToken {
-		opts = append(opts, oauth2.SetAuthURLParam(k, v))
+		opts[k] = v
 	}
 
 	return opts, nil
 }
 
-// exchangeCodeForToken exchanges the code for a token.
-func (p *StandardOAuth2Provider) exchangeCodeForToken(ctx context.Context, code, redirectURL string, opts []oauth2.AuthCodeOption) (*oauth2.Token, error) {
-	oauthConfig := p.cloneTemplateConfig()
-	oauthConfig.RedirectURL = redirectURL
-
-	tok, err := oauthConfig.Exchange(ctx, code, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to exchange code for token: %w", err)
+// buildRefreshTokenOptions builds refresh token options.
+func (p *StandardOAuth2Provider) buildRefreshTokenOptions() map[string]string {
+	opts := map[string]string{}
+	for k, v := range p.cfg.ExtraToken {
+		opts[k] = v
 	}
-	return tok, nil
+	return opts
 }
 
-// createSessionFromToken creates the session from the token.
-func (p *StandardOAuth2Provider) createSessionFromToken(tok *oauth2.Token) *OAuth2Session {
-	idToken := ""
-	if idTokenValue := tok.Extra("id_token"); idTokenValue != nil {
-		idToken = fmt.Sprint(idTokenValue)
+// exchangeCodeForToken exchanges the code for a token and captures raw response data.
+func (p *StandardOAuth2Provider) exchangeCodeForToken(
+	ctx context.Context,
+	code, redirectURL string,
+	opts map[string]string,
+) (*TokenExchangeResult, error) {
+	form := url.Values{}
+	form.Set("grant_type", "authorization_code")
+	form.Set("code", code)
+	form.Set("redirect_uri", redirectURL)
+	form.Set("client_id", p.cfg.ClientID)
+
+	if p.cfg.ClientSecret != "" {
+		form.Set("client_secret", p.cfg.ClientSecret)
+	}
+
+	for k, v := range opts {
+		form.Set(k, v)
+	}
+
+	return p.doTokenRequest(ctx, form, "failed to exchange code for token")
+}
+
+// doTokenRequest sends the token request and captures raw body and headers.
+func (p *StandardOAuth2Provider) doTokenRequest(
+	ctx context.Context,
+	form url.Values,
+	errPrefix string,
+) (*TokenExchangeResult, error) {
+	oauthConfig := p.cloneTemplateConfig()
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		oauthConfig.Endpoint.TokenURL,
+		strings.NewReader(form.Encode()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to create request: %w", errPrefix, err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", errPrefix, err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to read response body: %w", errPrefix, err)
+	}
+
+	if resp.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("%s: http %d: %s", errPrefix, resp.StatusCode, string(bodyBytes))
+	}
+
+	rawBody := map[string]any{}
+	if len(bodyBytes) > 0 {
+		if err := json.Unmarshal(bodyBytes, &rawBody); err != nil {
+			return nil, fmt.Errorf("%s: failed to parse response body: %w", errPrefix, err)
+		}
+	}
+
+	rawHeaders := make(map[string]string, len(resp.Header))
+	for k, v := range resp.Header {
+		if len(v) > 0 {
+			rawHeaders[k] = v[0]
+		}
+	}
+
+	tok, err := tokenFromRawBody(rawBody)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to convert token response: %w", errPrefix, err)
+	}
+
+	return &TokenExchangeResult{
+		Token:      tok,
+		RawBody:    rawBody,
+		RawHeaders: rawHeaders,
+	}, nil
+}
+
+// createSessionFromToken creates the session from the token exchange result.
+func (p *StandardOAuth2Provider) createSessionFromToken(ctx context.Context, res *TokenExchangeResult) *OAuth2Session {
+	tok := res.Token
+
+	idToken := oauthgoutils.StringValue(res.RawBody["id_token"])
+
+	var grantedScopes []string
+	if raw := oauthgoutils.StringValue(res.RawBody["scope"]); raw != "" {
+		grantedScopes = strings.Fields(raw)
+	}
+
+	if len(grantedScopes) == 0 {
+		if raw := headerValueCI(res.RawHeaders, "X-OAuth-Scopes"); raw != "" {
+			parts := strings.Split(raw, ",")
+			grantedScopes = make([]string, 0, len(parts))
+			for _, p := range parts {
+				s := strings.TrimSpace(p)
+				if s != "" {
+					grantedScopes = append(grantedScopes, s)
+				}
+			}
+		}
 	}
 
 	return &OAuth2Session{
-		Provider:     p.name,
-		AccessToken:  tok.AccessToken,
-		RefreshToken: tok.RefreshToken,
-		TokenType:    tok.TokenType,
-		Expiry:       tok.Expiry,
-		IDToken:      idToken,
-		Raw:          map[string]any{"oauth2_token": tok},
+		Provider:        p.name,
+		AccessToken:     tok.AccessToken,
+		RefreshToken:    tok.RefreshToken,
+		TokenType:       tok.TokenType,
+		Expiry:          tok.Expiry,
+		IDToken:         idToken,
+		RequestedScopes: p.cfg.Scopes,
+		GrantedScopes:   grantedScopes,
+		Raw: map[string]any{
+			"token_response": res.RawBody,
+			"headers":        res.RawHeaders,
+		},
 	}
+}
+
+// tokenFromRawBody converts a raw token response into oauth2.Token.
+func tokenFromRawBody(raw map[string]any) (*oauth2.Token, error) {
+	accessToken := oauthgoutils.StringValue(raw["access_token"])
+	if accessToken == "" {
+		return nil, fmt.Errorf("missing access_token in token response")
+	}
+
+	tok := &oauth2.Token{
+		AccessToken:  accessToken,
+		TokenType:    oauthgoutils.StringValue(raw["token_type"]),
+		RefreshToken: oauthgoutils.StringValue(raw["refresh_token"]),
+	}
+
+	if expiry, ok := parseExpiry(raw); ok {
+		tok.Expiry = expiry
+	}
+
+	return tok, nil
+}
+
+// parseExpiry resolves expiry from either expiry or expires_in.
+func parseExpiry(raw map[string]any) (time.Time, bool) {
+	if v, ok := raw["expiry"]; ok {
+		if s := oauthgoutils.StringValue(v); s != "" {
+			if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+				return t, true
+			}
+			if t, err := time.Parse(time.RFC3339, s); err == nil {
+				return t, true
+			}
+		}
+	}
+
+	if v, ok := raw["expires_in"]; ok {
+		if secs, ok := oauthgoutils.Int64Value(v); ok && secs > 0 {
+			return time.Now().Add(time.Duration(secs) * time.Second), true
+		}
+	}
+
+	return time.Time{}, false
+}
+
+// headerValueCI gets a header value from a simple map using case-insensitive matching.
+func headerValueCI(headers map[string]string, key string) string {
+	if v, ok := headers[key]; ok {
+		return v
+	}
+	for k, v := range headers {
+		if strings.EqualFold(k, key) {
+			return v
+		}
+	}
+	return ""
 }
 
 // Refresh implements the OAuth2Provider interface method and refreshes the token.
 func (p *StandardOAuth2Provider) Refresh(ctx context.Context, refreshToken string) (*OAuth2Session, error) {
-	tok, err := p.refreshTokenFromSource(ctx, refreshToken)
-	if err != nil {
-		return nil, err
-	}
-	return p.createSessionFromToken(tok), nil
-}
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", refreshToken)
+	form.Set("client_id", p.cfg.ClientID)
 
-// refreshTokenFromSource refreshes the token from the source.
-func (p *StandardOAuth2Provider) refreshTokenFromSource(ctx context.Context, refreshToken string) (*oauth2.Token, error) {
-	o := p.cloneTemplateConfig()
-	ts := o.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})
-	tok, err := ts.Token()
+	if p.cfg.ClientSecret != "" {
+		form.Set("client_secret", p.cfg.ClientSecret)
+	}
+
+	for k, v := range p.buildRefreshTokenOptions() {
+		form.Set(k, v)
+	}
+
+	res, err := p.doTokenRequest(ctx, form, "failed to refresh token")
 	if err != nil {
 		return nil, err
 	}
-	if tok.RefreshToken == "" {
-		tok.RefreshToken = refreshToken
+
+	// Many providers do not return refresh_token during refresh. Preserve old one.
+	if res.Token.RefreshToken == "" {
+		res.Token.RefreshToken = refreshToken
+		res.RawBody["refresh_token"] = refreshToken
 	}
-	return tok, nil
+
+	return p.createSessionFromToken(ctx, res), nil
 }
 
 // Revoke implements the OAuth2Provider interface method and revokes the token.

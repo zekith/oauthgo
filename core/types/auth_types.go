@@ -44,6 +44,6 @@ type ProviderConfig struct {
 	ClientID          string
 	ClientSecret      string
 	OAuth2ODICOptions *OAuth2OIDCOptions
-	UserinfoURL       *string
+	UserInfoURL       *string
 	ExtraConfig       *map[string]string
 }

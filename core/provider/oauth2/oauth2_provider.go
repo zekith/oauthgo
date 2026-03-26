@@ -33,6 +33,7 @@ type OAuth2Session struct {
 
 // OAuth2Provider is an OAuth2 provider that needs to be implemented by a provider.
 type OAuth2Provider interface {
+	UserInfoURL() string
 	// Name returns the name of the provider.
 	Name() string
 	// AuthURL returns the URL to redirect the user to for authentication.

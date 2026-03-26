@@ -18,6 +18,7 @@ type oAuth2OIDCProviderConfig struct {
 	scopes                  []string
 	authURL                 string
 	tokenURL                string
+	userInfoURL             string
 	revokeTokenURL          string
 	usePKCE                 bool
 	skipIDTokenVerification bool
@@ -53,13 +54,17 @@ func newOAuth2OIDCProviderConfig(
 	opts *oauthgotypes.OAuth2OIDCOptions,
 	defaultOpts *oauthgotypes.OAuth2OIDCOptions,
 ) *oAuth2OIDCProviderConfig {
-
+	userInfoURL := ""
+	if providerConfig.UserInfoURL != nil {
+		userInfoURL = *providerConfig.UserInfoURL
+	}
 	return &oAuth2OIDCProviderConfig{
 		clientID:       providerConfig.ClientID,
 		clientSecret:   providerConfig.ClientSecret,
 		name:           resolveName(opts, func(o *oauthgotypes.OAuth2OIDCOptions) string { return pointer.GetString(o.Name) }, pointer.GetString(defaultOpts.Name)),
 		authURL:        pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.AuthURL }, defaultOpts.OAuth2.AuthURL)),
 		tokenURL:       pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.TokenURL }, defaultOpts.OAuth2.TokenURL)),
+		userInfoURL:    userInfoURL,
 		revokeTokenURL: pointer.GetString(resolveURL(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *string { return o.RevocationURL }, defaultOpts.OAuth2.RevocationURL)),
 		usePKCE:        pointer.GetBool(resolveUsePKCE(opts.OAuth2, func(o *oauthgotypes.OAuth2Options) *bool { return o.UsePKCE }, defaultOpts.OAuth2.UsePKCE)),
 		extraAuth: pointer.Get(resolveExtraAuth(
@@ -107,6 +112,7 @@ func newOAuth2Provider(config *oAuth2OIDCProviderConfig) oauthgoauth2.OAuth2Prov
 		Scopes:        config.scopes,
 		AuthURL:       config.authURL,
 		TokenURL:      config.tokenURL,
+		UserInfoURL:   config.userInfoURL,
 		RevocationURL: config.revokeTokenURL,
 		UsePKCE:       config.usePKCE,
 		ExtraAuth:     config.extraAuth,

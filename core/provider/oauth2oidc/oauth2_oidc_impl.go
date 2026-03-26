@@ -17,6 +17,8 @@ func NewOAuth2OIDCFacade(oAuth2Provider oauthgoauth2.OAuth2Provider, oidcProvide
 // Name returns the name of the provider.
 func (f *OAuth2OIDCFacade) Name() string { return f.oAuth2Provider.Name() }
 
+func (f *OAuth2OIDCFacade) UserInfoURL() string { return f.oAuth2Provider.UserInfoURL() }
+
 // AuthURL returns the URL to redirect the user to for authentication.
 func (f *OAuth2OIDCFacade) AuthURL(ctx context.Context, r *http.Request, opts oauthgoauth2.AuthURLOptions) (string, string, error) {
 	return f.oAuth2Provider.AuthURL(ctx, r, opts)

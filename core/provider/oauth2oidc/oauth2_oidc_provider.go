@@ -25,6 +25,8 @@ type OAuthO2IDCProvider interface {
 	// GetState Get state from opaque state
 	GetState(ctx context.Context, opaqueState string) (*oauthgostate.StatePayload, error)
 
+	UserInfoURL() string
+
 	// UserInfo retrieves user information.
 	UserInfo(ctx context.Context, accessToken, idToken string) (*oauthgooidc.User, error)
 	// VerifyIDToken verifies the JWT ID token.

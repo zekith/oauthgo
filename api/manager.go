@@ -1,8 +1,12 @@
 package oauthgo
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -84,6 +88,14 @@ func (m *ProviderManager) Callback(
 		return nil, err
 	}
 
+	if user == nil || len(user.Email) == 0 && provider.UserInfoURL() != "" {
+		user, err = userInfoFromHTTP(r.Context(), provider.UserInfoURL(), oAuth2Session.AccessToken)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	sid, err := m.handleSessionStorage(r, w, opts, oAuth2Session, user)
 	if err != nil {
 		return nil, err
@@ -100,6 +112,39 @@ func (m *ProviderManager) Callback(
 		Session:      oAuth2Session,
 		SID:          sid,
 	}, nil
+}
+
+func userInfoFromHTTP(ctx context.Context, userInfoEndpoint string, accessToken string) (*User, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, userInfoEndpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, fmt.Errorf("%s: userinfo http %d", userInfoEndpoint, res.StatusCode)
+	}
+
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var claims oauthgooidc.OIDCUserClaims
+	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&claims); err != nil {
+		return nil, err
+	}
+
+	return claims.ToUser(), nil
 }
 
 // LoggedInUser writes JSON information about the logged-in user (cookie + optional server session).

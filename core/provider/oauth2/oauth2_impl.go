@@ -25,6 +25,7 @@ type OAuth2Config struct {
 	Scopes        []string          // scopes to request, defaults to "openid profile email"
 	AuthURL       string            // optional, for discovery-based providers
 	TokenURL      string            // optional, for discovery-based providers
+	UserInfoURL   string            // optional, provide if OIDC is not supported
 	RevocationURL string            // optional RFC7009
 	ExtraAuth     map[string]string // provider-specific params if needed
 	ExtraToken    map[string]string // provider-specific params if needed
@@ -84,6 +85,10 @@ func createOAuth2Config(cfg OAuth2Config, scopes []string) *oauth2.Config {
 // Name implements the OAuth2Provider interface method and returns the provider name.
 func (p *StandardOAuth2Provider) Name() string {
 	return p.name
+}
+
+func (p *StandardOAuth2Provider) UserInfoURL() string {
+	return p.cfg.UserInfoURL
 }
 
 // cloneTemplateConfig returns a clone of the template config.

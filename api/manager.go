@@ -106,11 +106,12 @@ func (m *ProviderManager) Callback(
 	}
 
 	return &CallbackResult{
-		ReturnTo:     statePayload.ReturnTo,
-		ProviderName: providerName,
-		User:         user,
-		Session:      oAuth2Session,
-		SID:          sid,
+		RequestedScopes: statePayload.RequestedScopes,
+		ReturnTo:        statePayload.ReturnTo,
+		ProviderName:    providerName,
+		User:            user,
+		Session:         oAuth2Session,
+		SID:             sid,
 	}, nil
 }
 

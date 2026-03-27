@@ -24,9 +24,10 @@ type CallbackOptions struct {
 
 // CallbackResult contains the final results of a callback.
 type CallbackResult struct {
-	ProviderName string
-	User         *User
-	Session      *SessionData
-	SID          string
-	ReturnTo     string
+	ProviderName    string
+	User            *User
+	Session         *SessionData
+	SID             string
+	ReturnTo        string
+	RequestedScopes []string
 }

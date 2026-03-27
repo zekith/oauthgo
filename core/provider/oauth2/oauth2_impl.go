@@ -113,6 +113,12 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 		if r.URL.Query().Get("rd") != "" {
 			opts.ReturnTo = r.URL.Query().Get("rd")
 		}
+		// set scopes from query params if present (comma-separated)
+		if r.URL.Query().Get("scopes") != "" {
+			scopeArr := strings.Split(r.URL.Query().Get("scopes"), ",")
+			o.Scopes = scopeArr
+			opts.Scopes = scopeArr
+		}
 	}
 
 	statePayload, err := p.createStatePayload(opts)
@@ -158,14 +164,15 @@ func (p *StandardOAuth2Provider) createStatePayload(opts AuthURLOptions) (oauthg
 	}
 
 	return oauthgostate.StatePayload{
-		Provider: p.name,
-		Nonce:    nonce,
-		CSRF:     csrf,
-		ReturnTo: opts.ReturnTo,
-		PKCE:     pkce,
-		Redirect: opts.RedirectURL,
-		IssuedAt: time.Now().Unix(),
-		Extras:   opts.Extras,
+		Provider:        p.name,
+		Nonce:           nonce,
+		CSRF:            csrf,
+		ReturnTo:        opts.ReturnTo,
+		PKCE:            pkce,
+		Redirect:        opts.RedirectURL,
+		IssuedAt:        time.Now().Unix(),
+		Extras:          opts.Extras,
+		RequestedScopes: opts.Scopes,
 	}, nil
 }
 
@@ -368,7 +375,7 @@ func (p *StandardOAuth2Provider) createSessionFromToken(ctx context.Context, res
 	}
 
 	if len(grantedScopes) == 0 {
-		if raw := headerValueCI(res.RawHeaders, "X-OAuth-Scopes"); raw != "" {
+		if raw := headerValueCI(res.RawHeaders, "X-OAuth-RequestedScopes"); raw != "" {
 			parts := strings.Split(raw, ",")
 			grantedScopes = make([]string, 0, len(parts))
 			for _, p := range parts {

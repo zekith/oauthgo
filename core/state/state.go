@@ -37,7 +37,9 @@ type StatePayload struct {
 	// This can be used to pass custom parameters or data that the application needs.
 	Extras map[string]string `json:"extras,omitempty"`
 	// ReturnTo is the dynamic url to redirect the user to after authentication.
-	ReturnTo string
+	ReturnTo string `json:"returnTo"`
+
+	RequestedScopes []string `json:"requestedScopes,omitempty"`
 }
 
 // StateCodec is a state token encoder/decoder.

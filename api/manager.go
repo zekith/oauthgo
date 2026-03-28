@@ -112,6 +112,7 @@ func (m *ProviderManager) Callback(
 		User:            user,
 		Session:         oAuth2Session,
 		SID:             sid,
+		RequestParams:   statePayload.RequestParams,
 	}, nil
 }
 

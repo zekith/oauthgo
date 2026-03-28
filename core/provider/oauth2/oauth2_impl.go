@@ -125,6 +125,13 @@ func (p *StandardOAuth2Provider) AuthURL(ctx context.Context, r *http.Request, o
 	if err != nil {
 		return "", "", err
 	}
+	queryParams := make(map[string]interface{}, len(r.URL.Query()))
+	for k, v := range r.URL.Query() {
+		if len(v) > 0 {
+			queryParams[k] = v[0]
+		}
+	}
+	statePayload.RequestParams = queryParams
 
 	opaque, err := oauthgostate.GetStateCodec().Encode(statePayload)
 	if err != nil {

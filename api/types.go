@@ -30,4 +30,5 @@ type CallbackResult struct {
 	SID             string
 	ReturnTo        string
 	RequestedScopes []string
+	RequestParams   map[string]interface{}
 }

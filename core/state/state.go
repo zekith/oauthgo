@@ -40,6 +40,11 @@ type StatePayload struct {
 	ReturnTo string `json:"returnTo"`
 
 	RequestedScopes []string `json:"requestedScopes,omitempty"`
+
+	// RequestParams is a map of additional request parameters that can be included in the state.
+	// This can be used to pass custom query parameters in the login endpoint that application can
+	// use in the callback results.
+	RequestParams map[string]interface{} `json:"requestParams,omitempty"`
 }
 
 // StateCodec is a state token encoder/decoder.
